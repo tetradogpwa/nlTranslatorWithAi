@@ -94,7 +94,6 @@ export class FsManager {
   }
 
   // ---- Utilidades de navegación ----------------------------------------
-
   /** Obtiene (creando si hace falta) una subcarpeta a partir de una ruta tipo "Library/Mushoku Tensei/chapters". */
   async getDir(path, { create = true } = {}) {
     const parts = path.split('/').filter(Boolean);
@@ -125,7 +124,6 @@ export class FsManager {
   }
 
   // ---- Lectura / escritura de archivos -----------------------------------
-
   async readText(path) {
     const file = await this.#getFileHandle(path, false);
     if (!file) return null;

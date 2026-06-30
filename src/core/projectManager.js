@@ -40,7 +40,7 @@ const defaultMetadata = (name) => ({
   sourceLang: '',
   targetLangs: [],
   setupPending: true,
-  knownChapterCount: null, // "hasta qué capítulo dispones" si no tiene todos
+  knownChapterCount: null,
   hasAllChapters: null,
   createdAt: new Date().toISOString(),
 });
@@ -50,7 +50,6 @@ export class ProjectManager {
   async syncProject() {
     await fsManager.getDir('Source');
     await fsManager.getDir('Library');
-
     const sourceNovels = await scanSourceNovels();
     const libraryEntries = await fsManager.listEntries('Library');
     const libraryNovels = new Set(libraryEntries.filter((e) => e.kind === 'directory').map((e) => e.name));
@@ -66,7 +65,6 @@ export class ProjectManager {
       }
       await this.#syncChapters(novelName);
     }
-
     return { newNovels, removedNovels, sourceNovels };
   }
 
@@ -75,8 +73,10 @@ export class ProjectManager {
     await fsManager.getDir(`Library/${novelName}/chapters`);
     await fsManager.writeJSON(`Library/${novelName}/metadata.json`, defaultMetadata(novelName));
     await fsManager.writeJSON(`Library/${novelName}/glossary/general.json`, { entries: [] });
-    await fsManager.writeText(`Library/${novelName}/glossary/style.json`.replace('.json', '.md'),
-      defaultStyleGuide(novelName));
+    await fsManager.writeText(
+      `Library/${novelName}/glossary/style.md`,
+      defaultStyleGuide(novelName)
+    );
   }
 
   async #syncChapters(novelName) {
@@ -95,12 +95,10 @@ export class ProjectManager {
         newChapters.push(num);
       }
     }
-
     const sourceNums = new Set(sourceChapters.map(chapterNumberFromFileName));
     for (const num of existingNums) {
-      if (!sourceNums.has(num)) removedChapters.push(num); // nunca se borra sin confirmación del usuario
+      if (!sourceNums.has(num)) removedChapters.push(num);
     }
-
     return { newChapters, removedChapters };
   }
 
@@ -113,7 +111,7 @@ export class ProjectManager {
     await fsManager.writeJSON(`${base}/state.json`, {
       number: num,
       sourceFileName,
-      languages: {}, // langcode -> { status, glossaryApproved, lastUpdated }
+      languages: {},
     });
   }
 
@@ -154,13 +152,8 @@ export class ProjectManager {
 
 function defaultStyleGuide(novelName) {
   return `# Guía de estilo — ${novelName}
-
-## Honoríficos
-(define aquí cómo tratar -san, -kun, -sama, etc.)
-
-## Nombres propios
-(criterio de transliteración / mantenimiento)
-
+## Honoríficos (define aquí cómo tratar -san, -kun, -sama, etc.)
+## Nombres propios (criterio de transliteración / mantenimiento)
 ## Títulos
 ## Cursivas
 ## Comillas

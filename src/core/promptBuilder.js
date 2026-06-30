@@ -31,9 +31,9 @@ Formato exacto de cada elemento:
 {"term": "texto original", "reading": "lectura si aplica o cadena vacía", "type": "personaje|lugar|tecnica|objeto|titulo|otro", "description": "breve descripción de contexto", "suggestedTranslation": "tu propuesta en ${targetLang}", "notes": "notas opcionales"}
 
 ## Capítulo
-"""
+\`\`\`
 ${chapterText}
-"""`;
+\`\`\``;
   },
 
   /** Paso 2: traducción completa del capítulo con el glosario ya aprobado. */
@@ -50,9 +50,9 @@ ${formatGlossaryBlock(glossary)}
 Devuelve únicamente el texto traducido del capítulo, sin comentarios, notas ni explicaciones adicionales, conservando los saltos de párrafo del original.
 
 ## Capítulo original
-"""
+\`\`\`
 ${chapterText}
-"""`;
+\`\`\``;
   },
 
   /** Paso 3: revisión de la traducción ya realizada. */
@@ -68,17 +68,18 @@ ${formatGlossaryBlock(glossary)}
 ## Instrucciones
 Devuelve un JSON (array) de observaciones, cada una con:
 {"location": "fragmento o párrafo afectado", "issue": "descripción del problema", "suggestion": "corrección propuesta", "severity": "baja|media|alta"}
+
 Si no hay problemas, devuelve un array vacío [].
 
 ## Texto original
-"""
+\`\`\`
 ${originalText}
-"""
+\`\`\`
 
 ## Traducción a revisar
-"""
+\`\`\`
 ${translatedText}
-"""`;
+\`\`\``;
   },
 
   /** Paso 4: prompt de corrección a partir de las observaciones aceptadas. */
@@ -92,8 +93,8 @@ ${translatedText}
 ${obsBlock || '(ninguna)'}
 
 ## Traducción actual
-"""
+\`\`\`
 ${translatedText}
-"""`;
+\`\`\``;
   },
 };

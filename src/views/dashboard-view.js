@@ -37,20 +37,14 @@ export class DashboardView extends BaseElement {
   async connectedCallback() {
     this.render();
     this.$('#syncBtn').addEventListener('click', () => this.#syncAndLoad());
-
-    // Las tarjetas emiten 'open-novel' (composed:true, burbujea hasta ln-app).
-    // Lo interceptamos aquí en el shadowRoot ANTES de que salga,
-    // detenemos la propagación y decidimos qué hacer nosotros.
     this.shadowRoot.addEventListener('open-novel', (e) => {
       e.stopPropagation();
       this.#handleOpenNovel(e.detail.id);
-    }, true); // capture:true → lo recibimos antes de que llegue a ningún hijo
-
+    }, true);
     this.$('ln-novel-wizard').addEventListener('wizard-saved', async (e) => {
       await projectManager.saveNovelMeta(e.detail.originalName, e.detail);
       await this.#loadNovels();
     });
-
     await this.#syncAndLoad();
   }
 
@@ -61,8 +55,6 @@ export class DashboardView extends BaseElement {
       this.$('ln-novel-wizard').open({ meta, detectedChapterCount: chapters.length });
       return;
     }
-    // Emitimos un evento DISTINTO ('navigate-to-novel') para que ln-app
-    // lo escuche sin riesgo de confundirlo con los eventos crudos de tarjetas.
     this.emit('navigate-to-novel', { id: novelId });
   }
 

@@ -24,7 +24,7 @@ export class LnReader extends BaseElement {
         padding: var(--ln-space-6) max(var(--ln-space-4), calc((100% - ${t.readingWidth}px)/2));
       }
       p { margin: 0 0 ${t.paragraphSpacing}px; white-space: pre-wrap; }
-      .toolbar { position:sticky; top:0; display:flex; gap:8px; padding: var(--ln-space-2); background: var(--ln-bg-elevated); border-bottom:1px solid var(--ln-border); }
+      .toolbar { position:sticky; top:0; display:flex; gap:8px; padding: var(--ln-space-2); background: var(--ln-bg-elevated); border-bottom:1px solid var(--ln-border); z-index: 5; }
       .toolbar button { background:transparent; border:1px solid var(--ln-border); color:var(--ln-text); border-radius:6px; padding:4px 10px; font-size:12px; }
     `;
   }

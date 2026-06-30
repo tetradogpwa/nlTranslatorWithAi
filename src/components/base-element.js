@@ -1,5 +1,4 @@
 // src/components/base-element.js
-
 /**
  * Base mínima para custom elements de la app. No es un framework: solo
  * evita repetir boilerplate de shadow DOM + render + emisión de eventos.
@@ -15,7 +14,7 @@ export class BaseElement extends HTMLElement {
     return '';
   }
 
-  /** Sobrescribir: CSS del componente (se inyecta junto a tokens.css vía @import o variables heredadas). */
+  /** Sobrescribir: CSS del componente. */
   styles() {
     return '';
   }

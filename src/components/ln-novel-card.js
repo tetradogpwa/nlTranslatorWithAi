@@ -16,34 +16,57 @@ export class LnNovelCard extends BaseElement {
     return `
       :host { display:block; }
       .card {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: var(--ln-space-4);
         background: var(--ln-bg-card);
         border: 1px solid var(--ln-border);
         border-radius: var(--ln-radius-lg);
         overflow: hidden;
         cursor: pointer;
-        transition: transform .15s ease, box-shadow .15s ease;
+        transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+        text-align: left;
+        width: 100%;
       }
-      .card:hover { transform: translateY(-2px); box-shadow: var(--ln-shadow-2); }
+      .card:hover { transform: translateY(-1px); box-shadow: var(--ln-shadow-2); border-color: var(--ln-accent); }
+
       .banner {
-        height: 120px;
         background: linear-gradient(135deg, var(--ln-bg-elevated), var(--ln-bg));
         background-size: cover;
         background-position: center;
-        display:flex; align-items:flex-end; justify-content:flex-end;
-        padding: var(--ln-space-2);
+        min-height: 130px;
+        position: relative;
       }
-      .star { font-size: 20px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
-      .body { padding: var(--ln-space-4); display:flex; flex-direction:column; gap: var(--ln-space-2); }
-      .title { font-weight: 600; font-size: 15px; }
+      .star {
+        position: absolute; top: var(--ln-space-2); right: var(--ln-space-2);
+        font-size: 20px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
+      }
+
+      .body {
+        padding: var(--ln-space-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--ln-space-2);
+        min-width: 0; /* para que el text-overflow funcione en grid */
+      }
+      .title { font-weight: 600; font-size: 16px; }
+      .subtitle { font-size: 12px; color: var(--ln-text-muted); }
       .status {
         font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
         color: var(--ln-text-muted);
       }
       .langs { display:flex; flex-direction:column; gap: 4px; margin-top: var(--ln-space-2); }
       .lang-row { display:flex; align-items:center; gap: var(--ln-space-2); font-size: 11px; color: var(--ln-text-muted); }
+      .lang-code { width: 56px; font-weight: 600; }
       .bar { flex:1; height:5px; background: var(--ln-border); border-radius: 3px; overflow:hidden; }
       .bar > span { display:block; height:100%; background: var(--ln-accent); }
-      .count { font-size: 11px; color: var(--ln-text-muted); }
+      .count { font-size: 11px; color: var(--ln-text-muted); margin-top: var(--ln-space-1); }
+
+      @media (max-width: 600px) {
+        .card { grid-template-columns: 110px 1fr; }
+        .banner { min-height: 110px; }
+        .title { font-size: 14px; }
+      }
     `;
   }
 
@@ -58,6 +81,7 @@ export class LnNovelCard extends BaseElement {
         </div>
         <div class="body">
           <div class="title">${n.nameEs || n.originalName}</div>
+          ${n.nameEs && n.originalName !== n.nameEs ? `<div class="subtitle">${n.originalName}</div>` : ''}
           <div class="status">${NovelStatusLabel[n.status] ?? n.status}</div>
           <div class="count">${n.chapterCount ?? 0} capítulos</div>
           <div class="langs">
@@ -65,7 +89,7 @@ export class LnNovelCard extends BaseElement {
               .map(
                 (l) => `
                 <div class="lang-row">
-                  <span>${l.langcode}</span>
+                  <span class="lang-code">${l.langcode}</span>
                   <div class="bar"><span style="width:${Math.round(l.progress * 100)}%"></span></div>
                   <span>${Math.round(l.progress * 100)}%</span>
                 </div>`

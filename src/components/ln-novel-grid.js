@@ -11,10 +11,11 @@ export class LnNovelGrid extends BaseElement {
 
   styles() {
     return `
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: var(--ln-space-4);
+      :host { display:block; }
+      .list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ln-space-3);
       }
       .empty {
         color: var(--ln-text-muted);
@@ -29,7 +30,7 @@ export class LnNovelGrid extends BaseElement {
     if (!novels.length) {
       return `<div class="empty">No se han detectado novelas todavía. Añade carpetas con capítulos .txt dentro de <strong>Source/</strong>.</div>`;
     }
-    return `<div class="grid">${novels.map(() => '<ln-novel-card></ln-novel-card>').join('')}</div>`;
+    return `<div class="list">${novels.map(() => '<ln-novel-card></ln-novel-card>').join('')}</div>`;
   }
 
   connectedCallback() {

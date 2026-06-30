@@ -8,7 +8,6 @@ import { fsManager } from './fsManager.js';
  *   translations: { [langcode]: { translation, notes, status: 'PENDING'|'APPROVED', approvedAt } }
  * }
  */
-
 export class GlossaryManager {
   async getGeneralGlossary(novelName) {
     const data = await fsManager.readJSON(`Library/${novelName}/glossary/general.json`);

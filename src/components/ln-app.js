@@ -51,7 +51,7 @@ export class LnApp extends BaseElement {
         await fsManager.pickProjectFolder();
         this.#showDashboard();
       } catch (err) {
-        if (err?.name === 'AbortError') return; // el usuario cerró el diálogo, no es un error
+        if (err?.name === 'AbortError') return;
         console.error(err);
         const errorEl = this.$('#pickError');
         if (errorEl) errorEl.textContent = `No se pudo abrir la carpeta: ${err.message}`;
@@ -61,9 +61,6 @@ export class LnApp extends BaseElement {
 
   #showDashboard() {
     this.shadowRoot.innerHTML = `<style>${this.styles()}</style><dashboard-view></dashboard-view>`;
-    // Escuchamos 'navigate-to-novel', que solo lo emite dashboard-view
-    // explícitamente cuando la novela ya está configurada. Nunca llega
-    // el evento crudo de las tarjetas (dashboard lo corta en capture).
     this.$('dashboard-view').addEventListener('navigate-to-novel', (e) => this.#showNovel(e.detail.id));
   }
 

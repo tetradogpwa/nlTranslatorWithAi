@@ -12,6 +12,31 @@ export class LnChapterWorkflow extends BaseElement {
     await this.#refresh();
   }
 
+  /**
+   * Notifica al padre que un capítulo ha llegado a FINISHED en este idioma,
+   * indicando si hay un siguiente capítulo pendiente. El padre decide cómo
+   * comportarse (auto-avanzar o quedarse).
+   */
+  #emitFinished() {
+    this.emit('chapter-finished', {
+      novelName: this._ctx.novelName,
+      chapterNum: this._ctx.chapterNum,
+      targetLang: this._ctx.targetLang,
+    });
+  }
+
+  /**
+   * Pide al padre que abra el reader para este capítulo. Solo tiene sentido
+   * cuando el estado es FINISHED, pero la lógica vive en el padre.
+   */
+  #emitRead() {
+    this.emit('read-chapter', {
+      novelName: this._ctx.novelName,
+      chapterNum: this._ctx.chapterNum,
+      targetLang: this._ctx.targetLang,
+    });
+  }
+
   async #refresh() {
     const { novelName, chapterNum, targetLang } = this._ctx;
     this._langState = await chapterManager.getLangState(novelName, chapterNum, targetLang);
@@ -30,6 +55,20 @@ export class LnChapterWorkflow extends BaseElement {
         background: var(--ln-bg-card); border:1px solid var(--ln-border); border-radius: 999px;
         padding: 4px 10px; color: var(--ln-accent);
       }
+      .status-badge.finished { color: var(--ln-success); border-color: var(--ln-success); }
+
+      .finished-banner {
+        display:flex; align-items:center; gap: var(--ln-space-3);
+        background: var(--ln-bg-card); border:1px solid var(--ln-success);
+        border-radius: var(--ln-radius-md); padding: var(--ln-space-3) var(--ln-space-4);
+      }
+      .finished-banner .check { font-size: 20px; }
+      .finished-banner .msg { flex:1; color: var(--ln-success); font-weight: 600; }
+      .finished-banner button.read-btn {
+        background: var(--ln-success); color:#0e0f12; border:none;
+        border-radius: var(--ln-radius-sm); padding: 8px 14px; font-size: 13px; font-weight: 600;
+      }
+
       .glossary-review { display:flex; flex-direction:column; gap: var(--ln-space-2); }
       .term-row {
         display:grid; grid-template-columns: 1fr 1fr 2fr auto;
@@ -40,8 +79,8 @@ export class LnChapterWorkflow extends BaseElement {
       }
       .term-row.is-approved { border-color: var(--ln-success); }
       .term-row input {
-        background: var(--ln-bg); border:1px solid var(--ln-border);
-        color: var(--ln-text); border-radius:4px; padding:6px; font-size:12px;
+        background: var(--ln-bg); border:1px solid var(--ln-border); color: var(--ln-text);
+        border-radius:4px; padding:6px; font-size:12px;
       }
       .term-row.is-approved input { opacity: .6; }
       button.approve-btn {
@@ -58,22 +97,21 @@ export class LnChapterWorkflow extends BaseElement {
         border-radius: var(--ln-radius-sm); padding: 8px 16px; font-size:13px;
         font-weight:600; cursor:pointer;
       }
-      button.continue-btn:disabled {
-        opacity:.4; cursor:not-allowed;
-      }
-      .finished { color: var(--ln-success); font-weight:600; }
+      button.continue-btn:disabled { opacity:.4; cursor:not-allowed; }
     `;
   }
 
   template() {
+    const isFinished = this._langState.status === ChapterLangStatus.FINISHED;
     return `<div class="wrap">
-      <span class="status-badge">${ChapterLangStatusLabel[this._langState.status]}</span>
+      <span class="status-badge ${isFinished ? 'finished' : ''}">${ChapterLangStatusLabel[this._langState.status]}</span>
       <div id="stepArea"></div>
     </div>`;
   }
 
   #bindStep() {
     const area = this.$('#stepArea');
+    area.innerHTML = '';
     const status = this._langState.status;
     const { novelName, chapterNum, sourceLang, targetLang } = this._ctx;
 
@@ -83,8 +121,7 @@ export class LnChapterWorkflow extends BaseElement {
       panel.configure({
         title: 'Extracción de glosario',
         promptText: promptBuilder.buildGlossaryExtractionPrompt({
-          sourceLang,
-          targetLang,
+          sourceLang, targetLang,
           styleGuide: this._styleGuide,
           glossary: this._glossary,
           chapterText: this._originalText,
@@ -128,8 +165,7 @@ export class LnChapterWorkflow extends BaseElement {
       panel.configure({
         title: 'Traducción del capítulo',
         promptText: promptBuilder.buildTranslationPrompt({
-          sourceLang,
-          targetLang,
+          sourceLang, targetLang,
           styleGuide: this._styleGuide,
           glossary: this._glossary,
           chapterText: this._originalText,
@@ -154,19 +190,27 @@ export class LnChapterWorkflow extends BaseElement {
     }
 
     if (status === ChapterLangStatus.FINISHED) {
-      area.innerHTML = `<p class="finished">✓ Capítulo finalizado en ${targetLang}.</p>`;
+      // ===== CAMBIO 4: capítulo finalizado → banner verde con botón "Leer"
+      const banner = document.createElement('div');
+      banner.className = 'finished-banner';
+      banner.innerHTML = `
+        <span class="check">✓</span>
+        <span class="msg">Capítulo finalizado en ${targetLang}</span>
+        <button class="read-btn" type="button">Leer capítulo</button>
+      `;
+      banner.querySelector('.read-btn').addEventListener('click', () => this.#emitRead());
+      area.appendChild(banner);
+
+      // Notificamos al padre para que decida si auto-avanzar al siguiente
+      this.#emitFinished();
     }
   }
 
   async #renderGlossaryReview(area) {
     const { novelName, chapterNum, targetLang } = this._ctx;
-    // Copia local mutable; nunca se relee desde disco durante la revisión
-    // (eso causaba que los valores se restauraran al original tras aprobar).
     const terms = await glossaryManager.getChapterGlossary(novelName, chapterNum);
-
     const wrap = document.createElement('div');
     wrap.className = 'glossary-review';
-
     const intro = document.createElement('p');
     intro.textContent = 'Revisa y aprueba los términos nuevos antes de continuar:';
     wrap.appendChild(intro);
@@ -174,17 +218,14 @@ export class LnChapterWorkflow extends BaseElement {
     const continueBtn = document.createElement('button');
     continueBtn.className = 'continue-btn';
     continueBtn.textContent = 'Continuar a traducción →';
-
     const updateContinueBtn = () => {
       continueBtn.disabled = terms.some((t) => !t.approved);
     };
 
-    // Crear todas las filas una sola vez
     terms.forEach((term, idx) => {
       const row = document.createElement('div');
       row.className = 'term-row' + (term.approved ? ' is-approved' : '');
       row.dataset.idx = idx;
-
       const mkInput = (field, placeholder = '') => {
         const inp = document.createElement('input');
         inp.dataset.field = field;
@@ -192,43 +233,32 @@ export class LnChapterWorkflow extends BaseElement {
         inp.placeholder = placeholder;
         return inp;
       };
-
       const inpTerm   = mkInput('term');
       const inpRead   = mkInput('reading', 'lectura');
       const inpTrans  = mkInput('translation', 'traducción');
-
       const btn = document.createElement('button');
       btn.className = 'approve-btn' + (term.approved ? ' done' : '');
       btn.textContent = term.approved ? 'Aprobado ✓' : 'Aprobar';
       if (term.approved) btn.disabled = true;
-
       btn.addEventListener('click', async () => {
-        // Leer valores actuales de los inputs (no del objeto original)
         term.term        = inpTerm.value.trim()  || term.term;
         term.reading     = inpRead.value.trim();
         term.translation = inpTrans.value.trim() || term.translation;
         term.approved    = true;
-
-        // Persistir sin releer: actualizamos el array en memoria
         await glossaryManager.saveChapterGlossary(novelName, chapterNum, terms);
         await glossaryManager.approveTerm(novelName, targetLang, term);
-
-        // Actualizar solo esta fila en el DOM — sin tocar el scroll
         btn.textContent  = 'Aprobado ✓';
         btn.className    = 'approve-btn done';
         btn.disabled     = true;
         row.classList.add('is-approved');
-
         updateContinueBtn();
       });
-
       row.appendChild(inpTerm);
       row.appendChild(inpRead);
       row.appendChild(inpTrans);
       row.appendChild(btn);
       wrap.appendChild(row);
     });
-
     updateContinueBtn();
     continueBtn.addEventListener('click', async () => {
       await chapterManager.setLangState(novelName, chapterNum, targetLang, {
@@ -248,8 +278,7 @@ export class LnChapterWorkflow extends BaseElement {
     panel.configure({
       title: 'Revisión',
       promptText: promptBuilder.buildReviewPrompt({
-        sourceLang,
-        targetLang,
+        sourceLang, targetLang,
         styleGuide: this._styleGuide,
         glossary: this._glossary,
         originalText: this._originalText,
@@ -285,7 +314,6 @@ export class LnChapterWorkflow extends BaseElement {
       });
       return;
     }
-
     const listWrap = document.createElement('div');
     listWrap.innerHTML = observations
       .map(
@@ -297,11 +325,9 @@ export class LnChapterWorkflow extends BaseElement {
       )
       .join('');
     area.appendChild(listWrap);
-
     const applyBtn = document.createElement('button');
     applyBtn.textContent = 'Generar prompt de corrección con seleccionadas →';
     area.appendChild(applyBtn);
-
     applyBtn.addEventListener('click', () => {
       const accepted = observations.filter((_, i) => listWrap.querySelector(`[data-idx="${i}"]`).checked);
       const panel = document.createElement('ln-prompt-panel');
