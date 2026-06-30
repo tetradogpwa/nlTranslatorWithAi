@@ -5,9 +5,13 @@
 // - Para añadir un idioma nuevo: añade su clave aquí y en AVAILABLE_UI_LANGS.
 // - Fuera de aquí, nadie escribe strings hardcodeados: siempre t('clave').
 
+// Bandera oficial catalana (la Senyera): 9 franjas horizontales (5 grogues, 4 vermelles).
+// Se inserta como SVG en vez de emoji porque no existe un emoji unicode para la Senyera.
+const CATALAN_FLAG_SVG = `<svg viewBox="0 0 30 20" width="20" height="14" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;border-radius:2px;overflow:hidden;flex-shrink:0;"><rect width="30" height="20" fill="#FCDD09"/><rect y="2.222" width="30" height="2.222" fill="#DA121A"/><rect y="6.667" width="30" height="2.222" fill="#DA121A"/><rect y="11.111" width="30" height="2.222" fill="#DA121A"/><rect y="15.556" width="30" height="2.222" fill="#DA121A"/></svg>`;
+
 export const AVAILABLE_UI_LANGS = [
   { code: 'es-ES', flag: '🇪🇸', label: 'Español' },
-  { code: 'ca-ES', flag: '🏴', label: 'Català' },
+  { code: 'ca-ES', flag: CATALAN_FLAG_SVG, label: 'Català' },
   // Añadir más aquí cuando haga falta:
   // { code: 'en-US', flag: '🇬🇧', label: 'English' },
 ];
@@ -29,7 +33,6 @@ const STRINGS = {
         pickError: (msg) => `No se pudo abrir la carpeta: ${msg}`,
       },
     },
-
     ui: {
       back: '← Novelas',
       sync: '↻ Sincronizar',
@@ -38,13 +41,11 @@ const STRINGS = {
       setup: 'Configuración pendiente',
       loading: 'Cargando…',
     },
-
     dashboard: {
       title: 'Tus novelas',
       empty: 'No se han detectado novelas todavía. Añade carpetas con capítulos .txt dentro de Source/.',
       pendingBanner: (n) => `${n} novela(s) pendiente(s) de configurar — haz clic en su tarjeta para completar la ficha.`,
     },
-
     novel: {
       chapterTitle: (num, lang) => `Capítulo ${num} · ${lang}`,
       addLangTitle: 'Añadir idioma a esta serie',
@@ -52,8 +53,13 @@ const STRINGS = {
       addLangYes: `Sí, añadir`,
       addLangNo: 'Cancelar',
       langAdded: (lang) => `Idioma "${lang}" añadido. Ya puedes traducir esta serie.`,
+      addTitleTitle: 'Añade el título de la serie',
+      addTitleBody: (lang) => `Esta serie todavía no tiene título en "${lang}". Indícalo para continuar.`,
+      addTitlePlaceholder: 'Título de la novela',
+      addTitleSave: 'Guardar',
+      addTitleCancel: 'Cancelar',
+      addTitleError: 'El título no puede estar vacío.',
     },
-
     wizard: {
       title: (name) => `Nueva novela detectada: ${name}`,
       nameEs: 'Nombre en español',
@@ -72,7 +78,6 @@ const STRINGS = {
       cancel: 'Cancelar',
       save: 'Guardar',
     },
-
     workflow: {
       steps: {
         extract: 'Extracción de glosario',
@@ -107,7 +112,6 @@ const STRINGS = {
       translation: 'Traducción',
       lastUpdated: (iso) => `Última actualización: ${new Date(iso).toLocaleString()}`,
     },
-
     reader: {
       back: '← Volver',
       prev: '← Capítulo anterior',
@@ -115,7 +119,6 @@ const STRINGS = {
       bookmark: 'Añadir marcador',
       noTranslation: '(sin traducción todavía)',
     },
-
     status: {
       novel: {
         NEW: 'Nueva',
@@ -151,7 +154,6 @@ const STRINGS = {
         pickError: (msg) => `No s'ha pogut obrir la carpeta: ${msg}`,
       },
     },
-
     ui: {
       back: '← Novel·les',
       sync: '↻ Sincronitzar',
@@ -160,13 +162,11 @@ const STRINGS = {
       setup: 'Configuració pendent',
       loading: 'Carregant…',
     },
-
     dashboard: {
       title: 'Les teves novel·les',
       empty: 'Encara no s\'han detectat novel·les. Afegeix carpetes amb capítols .txt dins de Source/.',
       pendingBanner: (n) => `${n} novel·la(es) pendent(s) de configurar — fes clic a la targeta per completar la fitxa.`,
     },
-
     novel: {
       chapterTitle: (num, lang) => `Capítol ${num} · ${lang}`,
       addLangTitle: 'Afegeix idioma a aquesta sèrie',
@@ -174,8 +174,13 @@ const STRINGS = {
       addLangYes: 'Sí, afegir',
       addLangNo: 'Cancel·lar',
       langAdded: (lang) => `Idioma "${lang}" afegit. Ja pots traduir aquesta sèrie.`,
+      addTitleTitle: 'Afegeix el títol de la sèrie',
+      addTitleBody: (lang) => `Aquesta sèrie encara no té títol en "${lang}". Indica'l per continuar.`,
+      addTitlePlaceholder: 'Títol de la novel·la',
+      addTitleSave: 'Desar',
+      addTitleCancel: 'Cancel·lar',
+      addTitleError: 'El títol no pot estar buit.',
     },
-
     wizard: {
       title: (name) => `Nova novel·la detectada: ${name}`,
       nameEs: 'Nom en espanyol',
@@ -194,7 +199,6 @@ const STRINGS = {
       cancel: 'Cancel·lar',
       save: 'Desar',
     },
-
     workflow: {
       steps: {
         extract: 'Extracció de glossari',
@@ -229,7 +233,6 @@ const STRINGS = {
       translation: 'Traducció',
       lastUpdated: (iso) => `Última actualització: ${new Date(iso).toLocaleString()}`,
     },
-
     reader: {
       back: '← Tornar',
       prev: '← Capítol anterior',
@@ -237,7 +240,6 @@ const STRINGS = {
       bookmark: 'Afegeix marcador',
       noTranslation: '(sense traducció encara)',
     },
-
     status: {
       novel: {
         NEW: 'Nova',

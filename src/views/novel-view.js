@@ -3,41 +3,98 @@ import { BaseElement } from '../components/base-element.js';
 import '../components/ln-chapter-workflow.js';
 import '../components/ln-reader.js';
 import '../components/ln-add-lang-modal.js';
+import '../components/ln-add-title-modal.js';
 import '../components/ln-lang-switcher.js';
-import { projectManager } from '../core/projectManager.js';
+import { projectManager, getNovelTitle } from '../core/projectManager.js';
 import { chapterManager } from '../core/chapterManager.js';
 import { ChapterLangStatus, findLastPendingChapter } from '../core/states.js';
 import { i18n } from '../i18n/strings.js';
+import { navigateTo } from '../core/router.js';
 
 export class NovelView extends BaseElement {
-  async open(novelId) {
+  async open(novelId, opts = {}) {
     this._novelId = novelId;
+    this._pendingRoute = opts;
     await this.#enterNovel();
   }
 
   /**
+   * Llamado por ln-app cuando ya estamos viendo esta misma novela y solo
+   * cambia el capítulo/modo objetivo (navegación interna o atrás/adelante).
+   */
+  async goToRoute({ mode, chapterNum } = {}) {
+    if (!chapterNum || !this._chapters?.length) return;
+    const num = this.#matchChapterNumber(chapterNum);
+    if (!num) return;
+    const lang = i18n.current;
+    this._selectedChapter = num;
+    const state = await chapterManager.getLangState(this._novelId, num, lang);
+    if (mode === 'read' && state.status === ChapterLangStatus.FINISHED) {
+      await this.#renderChapterList();
+      this.#openReader({ novelName: this._novelId, chapterNum: num, targetLang: lang });
+    } else {
+      if (this._readerOverlay) this._readerOverlay.style.display = 'none';
+      this.$('h2').textContent = i18n.t('novel.chapterTitle', num, lang);
+      await this.#renderChapterList();
+      await this.#loadWorkflow();
+    }
+  }
+
+  /**
    * Decide qué hacer al entrar a la novela o al cambiar de idioma:
-   * - Si setupPending → abre wizard (delegado a dashboard, así que no debería pasar aquí).
    * - Si el idioma activo NO está en availableTargetLangs → abre el modal "añadir idioma".
-   *   Si lo acepta, lo añadimos y seguimos. Si lo cancela, salimos de la novela.
-   * - Si está, calculamos capítulo inicial y pintamos la vista.
+   * - Si la novela no tiene título en el idioma activo → abre el modal "añadir título".
+   * - Si todo está listo, calculamos capítulo inicial (o el de la ruta) y pintamos la vista.
    */
   async #enterNovel() {
     this._meta = await projectManager.getNovelMeta(this._novelId);
-    if (!this._meta) return;
+    if (!this._meta) {
+      this.emit('back-to-dashboard');
+      return;
+    }
     const lang = i18n.current;
     const available = this._meta.availableTargetLangs ?? [];
-
     if (!available.includes(lang)) {
-      // Mostrar modal; el handler de add-lang-confirmed / -cancelled
-      // está conectado al hacer render(), así que conectamos una sola vez.
       this.#ensureAddLangModal();
       this._addLangModal.open({ novelName: this._novelId, langcode: lang });
       return;
     }
+    if (!getNovelTitle(this._meta, lang)) {
+      this.#ensureAddTitleModal();
+      this._addTitleModal.open({ novelName: this._novelId, langcode: lang });
+      return;
+    }
 
-    this._selectedChapter = await this.#resolveInitialChapter();
+    // Importante: hay que tener this._chapters cargado ANTES de resolver el
+    // capítulo inicial, o resolveInitialChapter() devuelve null (bug del
+    // "Capítulo null" al entrar por primera vez en una serie).
+    this._chapters = await projectManager.getChapterNumbers(this._novelId);
+
+    const route = this._pendingRoute;
+    this._pendingRoute = null;
+    const routedChapter = route?.chapterNum ? this.#matchChapterNumber(route.chapterNum) : null;
+    this._selectedChapter = routedChapter ?? (await this.#resolveInitialChapter());
+
     await this.render2();
+
+    if (this._selectedChapter) {
+      const state = await chapterManager.getLangState(this._novelId, this._selectedChapter, lang);
+      if (route?.mode === 'read' && state.status === ChapterLangStatus.FINISHED) {
+        navigateTo('read', this._novelId, this._selectedChapter);
+        this.#openReader({ novelName: this._novelId, chapterNum: this._selectedChapter, targetLang: lang });
+      } else {
+        navigateTo('translate', this._novelId, this._selectedChapter);
+      }
+    }
+  }
+
+  /** Acepta tanto el número "tal cual" como con el padding a 3 dígitos usado internamente. */
+  #matchChapterNumber(num) {
+    if (!this._chapters?.length) return null;
+    if (this._chapters.includes(num)) return num;
+    const padded = String(num).padStart(3, '0');
+    if (this._chapters.includes(padded)) return padded;
+    return null;
   }
 
   #ensureAddLangModal() {
@@ -47,13 +104,27 @@ export class NovelView extends BaseElement {
     modal.addEventListener('add-lang-confirmed', async (e) => {
       const { novelName, langcode } = e.detail;
       this._meta = await projectManager.addAvailableTargetLang(novelName, langcode);
-      this._selectedChapter = await this.#resolveInitialChapter();
-      await this.render2();
+      await this.#enterNovel();
     });
     modal.addEventListener('add-lang-cancelled', () => {
       this.emit('back-to-dashboard');
     });
     this._addLangModal = modal;
+  }
+
+  #ensureAddTitleModal() {
+    if (this._addTitleModal) return;
+    const modal = document.createElement('ln-add-title-modal');
+    this.shadowRoot.appendChild(modal);
+    modal.addEventListener('title-confirmed', async (e) => {
+      const { novelName, langcode, title } = e.detail;
+      this._meta = await projectManager.setNovelTitle(novelName, langcode, title);
+      await this.#enterNovel();
+    });
+    modal.addEventListener('title-cancelled', () => {
+      this.emit('back-to-dashboard');
+    });
+    this._addTitleModal = modal;
   }
 
   async #resolveInitialChapter() {
@@ -93,7 +164,6 @@ export class NovelView extends BaseElement {
       li button .num { font-weight:600; }
       li button .chstatus { font-size:10px; color: var(--ln-text-muted); white-space:nowrap; }
       li button .read-icon { font-size: 12px; color: var(--ln-success); }
-
       section { padding: var(--ln-space-5); overflow-y:auto; min-width: 0; }
       .section-header {
         display:flex; justify-content:space-between; align-items:center;
@@ -112,7 +182,7 @@ export class NovelView extends BaseElement {
         <aside>
           <button class="back" id="backBtn">${i18n.t('ui.back')}</button>
           <div class="header-bar">
-            <h3>${this._meta?.nameEs || this._meta?.nameCa || this._novelId}</h3>
+            <h3>${getNovelTitle(this._meta, lang) || this._novelId}</h3>
             <ln-lang-switcher></ln-lang-switcher>
           </div>
           <p class="chapter-meta">${flag} ${lang}</p>
@@ -131,17 +201,13 @@ export class NovelView extends BaseElement {
 
   async render2() {
     this.render();
-    this._chapters = await projectManager.getChapterNumbers(this._novelId);
     this.$('#backBtn').addEventListener('click', () => this.emit('back-to-dashboard'));
-
-    // Cambio de idioma → re-evaluamos (puede requerir añadir idioma)
+    // Cambio de idioma → re-evaluamos (puede requerir añadir idioma o título)
     this.$('ln-lang-switcher').addEventListener('click', (e) => e.stopPropagation());
     // El switcher ya cambia i18n.current; nos suscribimos:
     this._offLang = i18n.onChange(() => this.#enterNovel());
-
     this.$('#workflow').addEventListener('chapter-finished', (e) => this.#onChapterFinished(e.detail));
     this.$('#workflow').addEventListener('read-chapter', (e) => this.#openReader(e.detail));
-
     await this.#renderChapterList();
     await this.#loadWorkflow();
   }
@@ -171,8 +237,10 @@ export class NovelView extends BaseElement {
         list.querySelectorAll('button').forEach((b) => b.setAttribute('aria-current', String(b === btn)));
         const state = await chapterManager.getLangState(this._novelId, num, lang);
         if (state.status === ChapterLangStatus.FINISHED) {
+          navigateTo('read', this._novelId, num);
           this.#openReader({ novelName: this._novelId, chapterNum: num, targetLang: lang });
         } else {
+          navigateTo('translate', this._novelId, num);
           await this.#loadWorkflow();
         }
       })
@@ -198,7 +266,6 @@ export class NovelView extends BaseElement {
 
   async #onChapterFinished({ novelName, chapterNum, targetLang }) {
     if (novelName !== this._novelId || targetLang !== i18n.current) return;
-
     const lang = i18n.current;
     const langStates = new Map();
     for (const num of this._chapters) {
@@ -224,11 +291,13 @@ export class NovelView extends BaseElement {
       list.querySelectorAll('button').forEach((b) =>
         b.setAttribute('aria-current', String(b.dataset.num === nextChapter))
       );
+      navigateTo('translate', this._novelId, nextChapter);
       await this.#loadWorkflow();
     }
   }
 
   async #openReader({ novelName, chapterNum, targetLang }) {
+    this._selectedChapter = chapterNum;
     if (!this._readerOverlay) {
       const overlay = document.createElement('div');
       overlay.style.cssText = `
@@ -249,11 +318,9 @@ export class NovelView extends BaseElement {
         border-radius: 6px; padding: 6px 12px; font-size: 13px;
       `;
       toolbar.appendChild(closeBtn);
-
       const reader = document.createElement('ln-reader');
       reader.style.flex = '1';
       reader.style.minHeight = '0';
-
       overlay.appendChild(toolbar);
       overlay.appendChild(reader);
       this.shadowRoot.appendChild(overlay);
@@ -264,9 +331,11 @@ export class NovelView extends BaseElement {
     this._readerOverlay.style.display = 'flex';
     let currentReaderChapter = chapterNum;
     await this.#loadReaderChapter(novelName, currentReaderChapter, targetLang);
-    this._readerClose.onclick = () => {
+    this._readerClose.onclick = async () => {
       this._readerOverlay.style.display = 'none';
-      this.#loadWorkflow();
+      navigateTo('translate', this._novelId, this._selectedChapter);
+      await this.#renderChapterList();
+      await this.#loadWorkflow();
     };
     this._readerEl.addEventListener('navigate-chapter', async (e) => {
       const sorted = [...this._chapters].sort((a, b) =>
@@ -276,6 +345,8 @@ export class NovelView extends BaseElement {
       const target = sorted[idx + e.detail.dir];
       if (target) {
         currentReaderChapter = target;
+        this._selectedChapter = target;
+        navigateTo('read', this._novelId, target);
         await this.#loadReaderChapter(novelName, target, targetLang);
       }
     });
@@ -289,5 +360,4 @@ export class NovelView extends BaseElement {
     this._offLang?.();
   }
 }
-
 customElements.define('novel-view', NovelView);

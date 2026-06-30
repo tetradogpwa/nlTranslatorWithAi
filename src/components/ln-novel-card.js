@@ -1,6 +1,7 @@
 // src/components/ln-novel-card.js
 import { BaseElement } from './base-element.js';
 import { i18n } from '../i18n/strings.js';
+import { getNovelTitle } from '../core/projectManager.js';
 
 export class LnNovelCard extends BaseElement {
   static get observedAttributes() {
@@ -29,7 +30,6 @@ export class LnNovelCard extends BaseElement {
         width: 100%;
       }
       .card:hover { transform: translateY(-1px); box-shadow: var(--ln-shadow-2); border-color: var(--ln-accent); }
-
       .banner {
         background: linear-gradient(135deg, var(--ln-bg-elevated), var(--ln-bg));
         background-size: cover;
@@ -46,8 +46,8 @@ export class LnNovelCard extends BaseElement {
         background: rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.15);
         padding: 2px 8px; border-radius: 999px; font-size: 11px;
         color: #fff; backdrop-filter: blur(4px);
+        display: inline-flex; align-items: center; gap: 4px;
       }
-
       .body {
         padding: var(--ln-space-4);
         display: flex;
@@ -72,7 +72,6 @@ export class LnNovelCard extends BaseElement {
         padding: var(--ln-space-2); margin-top: var(--ln-space-2);
       }
       .count { font-size: 11px; color: var(--ln-text-muted); margin-top: var(--ln-space-1); }
-
       @media (max-width: 600px) {
         .card { grid-template-columns: 1fr; }
         .banner { min-height: 180px; }
@@ -90,6 +89,7 @@ export class LnNovelCard extends BaseElement {
     const langAvail = (n.availableTargetLangs ?? []).includes(lang);
     const pct = Math.round((n.progressForActiveLang ?? 0) * 100);
     const flag = i18n.available.find((l) => l.code === lang)?.flag ?? '';
+    const title = getNovelTitle(n, lang) || n.originalName;
     return `
       <div class="card">
         <div class="banner" style="${n.banner ? `background-image:url('${n.banner}')` : ''}">
@@ -97,8 +97,8 @@ export class LnNovelCard extends BaseElement {
           <span class="lang-pill">${flag} ${lang}</span>
         </div>
         <div class="body">
-          <div class="title">${n.nameEs || n.nameCa || n.originalName}</div>
-          ${n.originalName && n.originalName !== (n.nameEs || n.nameCa) ? `<div class="subtitle">${n.originalName}</div>` : ''}
+          <div class="title">${title}</div>
+          ${n.originalName && n.originalName !== title ? `<div class="subtitle">${n.originalName}</div>` : ''}
           <div class="status">${t('status')}</div>
           <div class="count">${i18n.t('ui.chapters', n.chapterCount ?? 0)}</div>
           ${!langAvail
@@ -126,5 +126,4 @@ export class LnNovelCard extends BaseElement {
     this._off?.();
   }
 }
-
 customElements.define('ln-novel-card', LnNovelCard);

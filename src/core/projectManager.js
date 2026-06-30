@@ -32,6 +32,8 @@ const defaultMetadata = (name) => ({
   originalName: name,
   nameEs: '',
   nameCa: '',
+  // Títulos para futuros idiomas que no tengan campo dedicado (es-ES/ca-ES sí lo tienen).
+  names: {},
   banner: '',
   sourceLang: '',
   // Lista de langcodes para los que ESTA novela tiene traducción.
@@ -44,6 +46,29 @@ const defaultMetadata = (name) => ({
   createdAt: new Date().toISOString(),
 });
 
+/**
+ * Devuelve el título de la novela en un idioma concreto, o cadena vacía
+ * si todavía no se ha indicado. es-ES/ca-ES usan los campos clásicos
+ * (nameEs/nameCa); cualquier otro idioma futuro usa meta.names[langcode].
+ */
+export function getNovelTitle(meta, lang) {
+  if (!meta) return '';
+  if (lang === 'es-ES') return meta.nameEs ?? '';
+  if (lang === 'ca-ES') return meta.nameCa ?? '';
+  return meta.names?.[lang] ?? '';
+}
+
+function applyNovelTitle(meta, lang, title) {
+  if (lang === 'es-ES') {
+    meta.nameEs = title;
+  } else if (lang === 'ca-ES') {
+    meta.nameCa = title;
+  } else {
+    meta.names = { ...(meta.names ?? {}), [lang]: title };
+  }
+  return meta;
+}
+
 export class ProjectManager {
   async syncProject() {
     await fsManager.getDir('Source');
@@ -53,10 +78,8 @@ export class ProjectManager {
     const libraryNovels = new Set(
       libraryEntries.filter((e) => e.kind === 'directory').map((e) => e.name)
     );
-
     const newNovels = [];
     const removedNovels = [...libraryNovels].filter((n) => !sourceNovels.includes(n));
-
     for (const novelName of sourceNovels) {
       const isNew = !libraryNovels.has(novelName);
       if (isNew) {
@@ -86,10 +109,8 @@ export class ProjectManager {
     const existingNums = new Set(
       existing.filter((e) => e.kind === 'directory').map((e) => e.name)
     );
-
     const newChapters = [];
     const removedChapters = [];
-
     for (const fileName of sourceChapters) {
       const num = chapterNumberFromFileName(fileName);
       if (!existingNums.has(num)) {
@@ -147,6 +168,17 @@ export class ProjectManager {
     return meta;
   }
 
+  /**
+   * Guarda el título de la novela en un idioma concreto. Se usa cuando el
+   * usuario entra a una serie que todavía no tiene título en el idioma activo.
+   */
+  async setNovelTitle(novelName, langcode, title) {
+    const meta = await this.getNovelMeta(novelName);
+    applyNovelTitle(meta, langcode, title);
+    await this.saveNovelMeta(novelName, meta);
+    return meta;
+  }
+
   async getChapterNumbers(novelName) {
     const entries = await fsManager.listEntries(`Library/${novelName}/chapters`);
     return entries
@@ -166,14 +198,25 @@ export class ProjectManager {
 
 function defaultStyleGuide(novelName) {
   return `# Guía de estilo — ${novelName}
-## Honoríficos (define aquí cómo tratar -san, -kun, -sama, etc.)
-## Nombres propios (criterio de transliteración / mantenimiento)
+
+## Honoríficos
+(define aquí cómo tratar -san, -kun, -sama, etc.)
+
+## Nombres propios
+(criterio de transliteración / mantenimiento)
+
 ## Títulos
+
 ## Cursivas
+
 ## Comillas
+
 ## Registro del lenguaje
+
 ## Magia / habilidades
+
 ## Ataques / técnicas
+
 ## Unidades de medida
 `;
 }
