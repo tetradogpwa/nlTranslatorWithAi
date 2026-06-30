@@ -1,6 +1,6 @@
 // src/components/ln-novel-card.js
 import { BaseElement } from './base-element.js';
-import { NovelStatusLabel } from '../core/states.js';
+import { i18n } from '../i18n/strings.js';
 
 export class LnNovelCard extends BaseElement {
   static get observedAttributes() {
@@ -17,8 +17,6 @@ export class LnNovelCard extends BaseElement {
       :host { display:block; }
       .card {
         display: grid;
-        /* El banner ocupa el 55% del ancho (siempre ≥ la mitad).
-           En pantallas muy estrechas cae a 1fr (banner encima). */
         grid-template-columns: minmax(50%, 1fr) 1fr;
         gap: var(--ln-space-4);
         background: var(--ln-bg-card);
@@ -36,14 +34,18 @@ export class LnNovelCard extends BaseElement {
         background: linear-gradient(135deg, var(--ln-bg-elevated), var(--ln-bg));
         background-size: cover;
         background-position: center;
-        /* Más alto para que la imagen luzca como banner rectangular */
         min-height: 220px;
         position: relative;
       }
-
       .star {
         position: absolute; top: var(--ln-space-2); right: var(--ln-space-2);
         font-size: 20px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
+      }
+      .lang-pill {
+        position: absolute; bottom: var(--ln-space-2); left: var(--ln-space-2);
+        background: rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.15);
+        padding: 2px 8px; border-radius: 999px; font-size: 11px;
+        color: #fff; backdrop-filter: blur(4px);
       }
 
       .body {
@@ -51,7 +53,7 @@ export class LnNovelCard extends BaseElement {
         display: flex;
         flex-direction: column;
         gap: var(--ln-space-2);
-        min-width: 0; /* para que el text-overflow funcione en grid */
+        min-width: 0;
       }
       .title { font-weight: 600; font-size: 16px; }
       .subtitle { font-size: 12px; color: var(--ln-text-muted); }
@@ -59,14 +61,18 @@ export class LnNovelCard extends BaseElement {
         font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
         color: var(--ln-text-muted);
       }
-      .langs { display:flex; flex-direction:column; gap: 4px; margin-top: var(--ln-space-2); }
-      .lang-row { display:flex; align-items:center; gap: var(--ln-space-2); font-size: 11px; color: var(--ln-text-muted); }
-      .lang-code { width: 56px; font-weight: 600; }
-      .bar { flex:1; height:5px; background: var(--ln-border); border-radius: 3px; overflow:hidden; }
+      .progress-section { margin-top: var(--ln-space-2); display:flex; flex-direction:column; gap: 6px; }
+      .progress-row { display:flex; align-items:center; gap: var(--ln-space-2); font-size: 12px; color: var(--ln-text-muted); }
+      .bar { flex:1; height:6px; background: var(--ln-border); border-radius: 3px; overflow:hidden; }
       .bar > span { display:block; height:100%; background: var(--ln-accent); }
+      .pending-warn {
+        font-size: 12px; color: var(--ln-warning);
+        background: rgba(224, 168, 62, .08);
+        border:1px solid var(--ln-warning); border-radius: var(--ln-radius-sm);
+        padding: var(--ln-space-2); margin-top: var(--ln-space-2);
+      }
       .count { font-size: 11px; color: var(--ln-text-muted); margin-top: var(--ln-space-1); }
 
-      /* Móvil: layout vertical con banner arriba ocupando todo el ancho */
       @media (max-width: 600px) {
         .card { grid-template-columns: 1fr; }
         .banner { min-height: 180px; }
@@ -78,29 +84,33 @@ export class LnNovelCard extends BaseElement {
   template() {
     const n = this._novel;
     if (!n) return '';
+    const t = (k, ...a) => i18n.t(`status.novel.${n.status}`) ?? n.status;
     const isFinished = n.status === 'FINISHED';
+    const lang = i18n.current;
+    const langAvail = (n.availableTargetLangs ?? []).includes(lang);
+    const pct = Math.round((n.progressForActiveLang ?? 0) * 100);
+    const flag = i18n.available.find((l) => l.code === lang)?.flag ?? '';
     return `
       <div class="card">
         <div class="banner" style="${n.banner ? `background-image:url('${n.banner}')` : ''}">
           ${isFinished ? '<span class="star">⭐</span>' : ''}
+          <span class="lang-pill">${flag} ${lang}</span>
         </div>
         <div class="body">
-          <div class="title">${n.nameEs || n.originalName}</div>
-          ${n.nameEs && n.originalName !== n.nameEs ? `<div class="subtitle">${n.originalName}</div>` : ''}
-          <div class="status">${NovelStatusLabel[n.status] ?? n.status}</div>
-          <div class="count">${n.chapterCount ?? 0} capítulos</div>
-          <div class="langs">
-            ${(n.langProgress ?? [])
-              .map(
-                (l) => `
-                <div class="lang-row">
-                  <span class="lang-code">${l.langcode}</span>
-                  <div class="bar"><span style="width:${Math.round(l.progress * 100)}%"></span></div>
-                  <span>${Math.round(l.progress * 100)}%</span>
-                </div>`
-              )
-              .join('')}
-          </div>
+          <div class="title">${n.nameEs || n.nameCa || n.originalName}</div>
+          ${n.originalName && n.originalName !== (n.nameEs || n.nameCa) ? `<div class="subtitle">${n.originalName}</div>` : ''}
+          <div class="status">${t('status')}</div>
+          <div class="count">${i18n.t('ui.chapters', n.chapterCount ?? 0)}</div>
+          ${!langAvail
+            ? `<div class="pending-warn">${i18n.t('novel.addLangBody', lang)}</div>`
+            : `<div class="progress-section">
+                <div class="progress-row">
+                  <span>${flag} ${lang}</span>
+                  <div class="bar"><span style="width:${pct}%"></span></div>
+                  <span><strong>${pct}%</strong></span>
+                </div>
+              </div>`
+          }
         </div>
       </div>
     `;
@@ -108,7 +118,12 @@ export class LnNovelCard extends BaseElement {
 
   connectedCallback() {
     this.render();
+    this._off = i18n.onChange(() => this.render());
     this.addEventListener('click', () => this.emit('open-novel', { id: this._novel.id }));
+  }
+
+  disconnectedCallback() {
+    this._off?.();
   }
 }
 

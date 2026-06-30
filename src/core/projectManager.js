@@ -1,6 +1,5 @@
 // src/core/projectManager.js
 import { fsManager } from './fsManager.js';
-import { NovelStatus } from './states.js';
 
 const TEXT_EXT = '.txt';
 
@@ -8,7 +7,6 @@ function naturalCompare(a, b) {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 }
 
-/** Lee todas las carpetas de Source/, cada una es una novela. */
 async function scanSourceNovels() {
   const entries = await fsManager.listEntries('Source');
   return entries
@@ -17,7 +15,6 @@ async function scanSourceNovels() {
     .sort(naturalCompare);
 }
 
-/** Lee los .txt de Source/<novela>/, cada uno es un capítulo original. */
 async function scanSourceChapters(novelName) {
   const entries = await fsManager.listEntries(`Source/${novelName}`);
   return entries
@@ -26,7 +23,6 @@ async function scanSourceChapters(novelName) {
     .sort(naturalCompare);
 }
 
-/** Extrae el número de capítulo de un nombre tipo "001 - Inicio" -> "001". */
 function chapterNumberFromFileName(fileName) {
   const match = fileName.match(/^(\d+)/);
   return match ? match[1].padStart(3, '0') : fileName;
@@ -38,7 +34,10 @@ const defaultMetadata = (name) => ({
   nameCa: '',
   banner: '',
   sourceLang: '',
-  targetLangs: [],
+  // Lista de langcodes para los que ESTA novela tiene traducción.
+  // Opcional: si está vacía, la novela se considera no configurada
+  // para ningún idioma y el modal "añadir idioma" aparecerá al abrirla.
+  availableTargetLangs: [],
   setupPending: true,
   knownChapterCount: null,
   hasAllChapters: null,
@@ -46,13 +45,14 @@ const defaultMetadata = (name) => ({
 });
 
 export class ProjectManager {
-  /** Ejecuta la detección automática completa. Devuelve un resumen de cambios. */
   async syncProject() {
     await fsManager.getDir('Source');
     await fsManager.getDir('Library');
     const sourceNovels = await scanSourceNovels();
     const libraryEntries = await fsManager.listEntries('Library');
-    const libraryNovels = new Set(libraryEntries.filter((e) => e.kind === 'directory').map((e) => e.name));
+    const libraryNovels = new Set(
+      libraryEntries.filter((e) => e.kind === 'directory').map((e) => e.name)
+    );
 
     const newNovels = [];
     const removedNovels = [...libraryNovels].filter((n) => !sourceNovels.includes(n));
@@ -83,7 +83,9 @@ export class ProjectManager {
     const sourceChapters = await scanSourceChapters(novelName);
     const chaptersDir = `Library/${novelName}/chapters`;
     const existing = await fsManager.listEntries(chaptersDir);
-    const existingNums = new Set(existing.filter((e) => e.kind === 'directory').map((e) => e.name));
+    const existingNums = new Set(
+      existing.filter((e) => e.kind === 'directory').map((e) => e.name)
+    );
 
     const newChapters = [];
     const removedChapters = [];
@@ -131,6 +133,18 @@ export class ProjectManager {
 
   async saveNovelMeta(novelName, meta) {
     await fsManager.writeJSON(`Library/${novelName}/metadata.json`, meta);
+  }
+
+  /**
+   * Añade un langcode a availableTargetLangs si no estaba. Idempotente.
+   */
+  async addAvailableTargetLang(novelName, langcode) {
+    const meta = await this.getNovelMeta(novelName);
+    const list = meta.availableTargetLangs ?? [];
+    if (list.includes(langcode)) return meta;
+    meta.availableTargetLangs = [...list, langcode];
+    await this.saveNovelMeta(novelName, meta);
+    return meta;
   }
 
   async getChapterNumbers(novelName) {

@@ -4,7 +4,8 @@ import './ln-prompt-panel.js';
 import { promptBuilder } from '../core/promptBuilder.js';
 import { glossaryManager } from '../core/glossaryManager.js';
 import { chapterManager } from '../core/chapterManager.js';
-import { ChapterLangStatus, ChapterLangStatusLabel } from '../core/states.js';
+import { ChapterLangStatus } from '../core/states.js';
+import { i18n } from '../i18n/strings.js';
 
 export class LnChapterWorkflow extends BaseElement {
   async load({ novelName, chapterNum, sourceLang, targetLang }) {
@@ -12,11 +13,6 @@ export class LnChapterWorkflow extends BaseElement {
     await this.#refresh();
   }
 
-  /**
-   * Notifica al padre que un capítulo ha llegado a FINISHED en este idioma,
-   * indicando si hay un siguiente capítulo pendiente. El padre decide cómo
-   * comportarse (auto-avanzar o quedarse).
-   */
   #emitFinished() {
     this.emit('chapter-finished', {
       novelName: this._ctx.novelName,
@@ -25,10 +21,6 @@ export class LnChapterWorkflow extends BaseElement {
     });
   }
 
-  /**
-   * Pide al padre que abra el reader para este capítulo. Solo tiene sentido
-   * cuando el estado es FINISHED, pero la lógica vive en el padre.
-   */
   #emitRead() {
     this.emit('read-chapter', {
       novelName: this._ctx.novelName,
@@ -88,9 +80,7 @@ export class LnChapterWorkflow extends BaseElement {
         border-radius:4px; padding:6px 10px; font-size:12px;
         white-space:nowrap; cursor:pointer;
       }
-      button.approve-btn.done {
-        background: var(--ln-success); cursor: default;
-      }
+      button.approve-btn.done { background: var(--ln-success); cursor: default; }
       button.continue-btn {
         align-self: flex-start; margin-top: var(--ln-space-2);
         background: var(--ln-accent); border:none; color:#fff;
@@ -102,9 +92,10 @@ export class LnChapterWorkflow extends BaseElement {
   }
 
   template() {
-    const isFinished = this._langState.status === ChapterLangStatus.FINISHED;
+    const status = this._langState?.status ?? 'PENDING';
+    const isFinished = status === ChapterLangStatus.FINISHED;
     return `<div class="wrap">
-      <span class="status-badge ${isFinished ? 'finished' : ''}">${ChapterLangStatusLabel[this._langState.status]}</span>
+      <span class="status-badge ${isFinished ? 'finished' : ''}">${i18n.t(`status.chapter.${status}`)}</span>
       <div id="stepArea"></div>
     </div>`;
   }
@@ -119,13 +110,14 @@ export class LnChapterWorkflow extends BaseElement {
       const panel = document.createElement('ln-prompt-panel');
       area.appendChild(panel);
       panel.configure({
-        title: 'Extracción de glosario',
+        title: i18n.t('workflow.steps.extract'),
         promptText: promptBuilder.buildGlossaryExtractionPrompt({
           sourceLang, targetLang,
           styleGuide: this._styleGuide,
           glossary: this._glossary,
           chapterText: this._originalText,
         }),
+        responsePlaceholder: i18n.t('workflow.placeholder'),
         validate: (text) => {
           try {
             const value = glossaryManager.validateChapterExtractionJSON(text);
@@ -163,14 +155,18 @@ export class LnChapterWorkflow extends BaseElement {
       const panel = document.createElement('ln-prompt-panel');
       area.appendChild(panel);
       panel.configure({
-        title: 'Traducción del capítulo',
+        title: i18n.t('workflow.steps.translate'),
         promptText: promptBuilder.buildTranslationPrompt({
           sourceLang, targetLang,
           styleGuide: this._styleGuide,
           glossary: this._glossary,
           chapterText: this._originalText,
         }),
-        validate: (text) => (text.trim() ? { ok: true, value: text } : { ok: false, error: 'La traducción está vacía.' }),
+        responsePlaceholder: i18n.t('workflow.placeholder'),
+        validate: (text) =>
+          text.trim()
+            ? { ok: true, value: text }
+            : { ok: false, error: i18n.t('workflow.errEmptyTrans') },
       });
       panel.addEventListener('response-accepted', async (e) => {
         await chapterManager.saveTranslation(novelName, chapterNum, targetLang, e.detail);
@@ -190,18 +186,15 @@ export class LnChapterWorkflow extends BaseElement {
     }
 
     if (status === ChapterLangStatus.FINISHED) {
-      // ===== CAMBIO 4: capítulo finalizado → banner verde con botón "Leer"
       const banner = document.createElement('div');
       banner.className = 'finished-banner';
       banner.innerHTML = `
         <span class="check">✓</span>
-        <span class="msg">Capítulo finalizado en ${targetLang}</span>
-        <button class="read-btn" type="button">Leer capítulo</button>
+        <span class="msg">${i18n.t('workflow.finishedBanner', targetLang)}</span>
+        <button class="read-btn" type="button">${i18n.t('workflow.readBtn')}</button>
       `;
       banner.querySelector('.read-btn').addEventListener('click', () => this.#emitRead());
       area.appendChild(banner);
-
-      // Notificamos al padre para que decida si auto-avanzar al siguiente
       this.#emitFinished();
     }
   }
@@ -212,20 +205,19 @@ export class LnChapterWorkflow extends BaseElement {
     const wrap = document.createElement('div');
     wrap.className = 'glossary-review';
     const intro = document.createElement('p');
-    intro.textContent = 'Revisa y aprueba los términos nuevos antes de continuar:';
+    intro.textContent = i18n.t('workflow.approveHelp');
     wrap.appendChild(intro);
 
     const continueBtn = document.createElement('button');
     continueBtn.className = 'continue-btn';
-    continueBtn.textContent = 'Continuar a traducción →';
+    continueBtn.textContent = i18n.t('workflow.continueTranslate');
     const updateContinueBtn = () => {
       continueBtn.disabled = terms.some((t) => !t.approved);
     };
 
-    terms.forEach((term, idx) => {
+    terms.forEach((term) => {
       const row = document.createElement('div');
       row.className = 'term-row' + (term.approved ? ' is-approved' : '');
-      row.dataset.idx = idx;
       const mkInput = (field, placeholder = '') => {
         const inp = document.createElement('input');
         inp.dataset.field = field;
@@ -233,23 +225,23 @@ export class LnChapterWorkflow extends BaseElement {
         inp.placeholder = placeholder;
         return inp;
       };
-      const inpTerm   = mkInput('term');
-      const inpRead   = mkInput('reading', 'lectura');
-      const inpTrans  = mkInput('translation', 'traducción');
+      const inpTerm = mkInput('term');
+      const inpRead = mkInput('reading', i18n.t('workflow.reading'));
+      const inpTrans = mkInput('translation', i18n.t('workflow.translation'));
       const btn = document.createElement('button');
       btn.className = 'approve-btn' + (term.approved ? ' done' : '');
-      btn.textContent = term.approved ? 'Aprobado ✓' : 'Aprobar';
+      btn.textContent = term.approved ? i18n.t('workflow.approved') : i18n.t('workflow.approve');
       if (term.approved) btn.disabled = true;
       btn.addEventListener('click', async () => {
-        term.term        = inpTerm.value.trim()  || term.term;
-        term.reading     = inpRead.value.trim();
+        term.term = inpTerm.value.trim() || term.term;
+        term.reading = inpRead.value.trim();
         term.translation = inpTrans.value.trim() || term.translation;
-        term.approved    = true;
+        term.approved = true;
         await glossaryManager.saveChapterGlossary(novelName, chapterNum, terms);
         await glossaryManager.approveTerm(novelName, targetLang, term);
-        btn.textContent  = 'Aprobado ✓';
-        btn.className    = 'approve-btn done';
-        btn.disabled     = true;
+        btn.textContent = i18n.t('workflow.approved');
+        btn.className = 'approve-btn done';
+        btn.disabled = true;
         row.classList.add('is-approved');
         updateContinueBtn();
       });
@@ -276,7 +268,7 @@ export class LnChapterWorkflow extends BaseElement {
     const panel = document.createElement('ln-prompt-panel');
     area.appendChild(panel);
     panel.configure({
-      title: 'Revisión',
+      title: i18n.t('workflow.steps.reviewTrans'),
       promptText: promptBuilder.buildReviewPrompt({
         sourceLang, targetLang,
         styleGuide: this._styleGuide,
@@ -284,11 +276,11 @@ export class LnChapterWorkflow extends BaseElement {
         originalText: this._originalText,
         translatedText,
       }),
-      responsePlaceholder: 'Pega aquí el JSON de observaciones (o [] si no hay problemas)…',
+      responsePlaceholder: i18n.t('workflow.placeholderJson'),
       validate: (text) => {
         try {
           const value = JSON.parse(text);
-          if (!Array.isArray(value)) throw new Error('Se esperaba un array.');
+          if (!Array.isArray(value)) throw new Error(i18n.t('workflow.errArray'));
           return { ok: true, value };
         } catch (err) {
           return { ok: false, error: err.message };
@@ -307,7 +299,7 @@ export class LnChapterWorkflow extends BaseElement {
     const translatedText = await chapterManager.getTranslation(novelName, chapterNum, targetLang);
 
     if (!observations.length) {
-      area.innerHTML = `<p>No se reportaron observaciones.</p><button id="finishBtn">Marcar como finalizado</button>`;
+      area.innerHTML = `<p>${i18n.t('workflow.noObservations')}</p><button id="finishBtn">${i18n.t('workflow.finishNow')}</button>`;
       area.querySelector('#finishBtn').addEventListener('click', async () => {
         await chapterManager.finishChapter(novelName, chapterNum, targetLang);
         await this.#refresh();
@@ -326,21 +318,25 @@ export class LnChapterWorkflow extends BaseElement {
       .join('');
     area.appendChild(listWrap);
     const applyBtn = document.createElement('button');
-    applyBtn.textContent = 'Generar prompt de corrección con seleccionadas →';
+    applyBtn.textContent = i18n.t('workflow.applyCorrections');
     area.appendChild(applyBtn);
     applyBtn.addEventListener('click', () => {
       const accepted = observations.filter((_, i) => listWrap.querySelector(`[data-idx="${i}"]`).checked);
       const panel = document.createElement('ln-prompt-panel');
       area.appendChild(panel);
       panel.configure({
-        title: 'Corrección',
+        title: i18n.t('workflow.steps.correct'),
         promptText: promptBuilder.buildCorrectionPrompt({
           sourceLang: this._ctx.sourceLang,
           targetLang,
           translatedText,
           acceptedObservations: accepted,
         }),
-        validate: (text) => (text.trim() ? { ok: true, value: text } : { ok: false, error: 'Texto vacío.' }),
+        responsePlaceholder: i18n.t('workflow.placeholder'),
+        validate: (text) =>
+          text.trim()
+            ? { ok: true, value: text }
+            : { ok: false, error: i18n.t('workflow.errEmpty') },
       });
       panel.addEventListener('response-accepted', async (e) => {
         await chapterManager.saveTranslation(novelName, chapterNum, targetLang, e.detail);
@@ -348,6 +344,16 @@ export class LnChapterWorkflow extends BaseElement {
         await this.#refresh();
       });
     });
+  }
+
+  // Re-render al cambiar idioma
+  connectedCallback() {
+    this._off = i18n.onChange(() => {
+      if (this._ctx) this.render();
+    });
+  }
+  disconnectedCallback() {
+    this._off?.();
   }
 }
 

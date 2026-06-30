@@ -1,5 +1,6 @@
 // src/components/ln-novel-wizard.js
 import { BaseElement } from './base-element.js';
+import { i18n } from '../i18n/strings.js';
 
 export class LnNovelWizard extends BaseElement {
   open({ meta, detectedChapterCount }) {
@@ -38,43 +39,45 @@ export class LnNovelWizard extends BaseElement {
 
   template() {
     const m = this._meta ?? {};
+    const t = (k, ...a) => i18n.t(`wizard.${k}`, ...a);
     return `
       <form>
-        <h2>Nueva novela detectada: ${m.originalName ?? ''}</h2>
+        <h2>${t('title', m.originalName ?? '')}</h2>
         <div class="row">
-          <label>Nombre en español
+          <label>${t('nameEs')}
             <input name="nameEs" value="${m.nameEs ?? ''}" />
           </label>
-          <label>Nombre en catalán (opcional)
+          <label>${t('nameCa')}
             <input name="nameCa" value="${m.nameCa ?? ''}" />
           </label>
         </div>
-        <label>Banner horizontal (URL o ruta relativa)
+        <label>${t('banner')}
           <input name="banner" value="${m.banner ?? ''}" placeholder="https://… o ./banner.jpg" />
         </label>
-        <label>Idioma original (langcode)
-          <input name="sourceLang" value="${m.sourceLang ?? ''}" placeholder="ja-JP" required />
+        <label>${t('sourceLang')}
+          <input name="sourceLang" value="${m.sourceLang ?? ''}" placeholder="${t('sourceLangPlaceholder')}" required />
         </label>
         <fieldset>
-          <legend>Idiomas de destino</legend>
-          <label>Lista separada por comas (langcodes)
-            <input name="targetLangs" value="${(m.targetLangs ?? []).join(', ')}" placeholder="es-ES, ca-ES" required />
+          <legend>${t('targetLangs')}</legend>
+          <label>${t('targetLangsPlaceholder')}
+            <input name="availableTargetLangs" value="${(m.availableTargetLangs ?? []).join(', ')}" placeholder="es-ES, ca-ES" />
           </label>
+          <p class="hint">${t('targetLangsHelp')}</p>
         </fieldset>
-        <p class="hint">Capítulos detectados en Source/: <strong>${this._detectedChapterCount}</strong></p>
-        <label>¿Dispones de todos los capítulos?
+        <p class="hint">${t('detected', this._detectedChapterCount)}</p>
+        <label>${t('hasAll')}
           <select name="hasAllChapters">
-            <option value="true" ${m.hasAllChapters !== false ? 'selected' : ''}>Sí</option>
-            <option value="false" ${m.hasAllChapters === false ? 'selected' : ''}>No</option>
+            <option value="true" ${m.hasAllChapters !== false ? 'selected' : ''}>${t('hasAllYes')}</option>
+            <option value="false" ${m.hasAllChapters === false ? 'selected' : ''}>${t('hasAllNo')}</option>
           </select>
         </label>
         <label id="knownCountWrap" style="${m.hasAllChapters === false ? '' : 'display:none'}">
-          ¿Hasta qué capítulo dispones actualmente?
+          ${t('knownCount')}
           <input name="knownChapterCount" type="number" min="1" value="${m.knownChapterCount ?? ''}" />
         </label>
         <div class="actions">
-          <button type="button" id="cancel">Cancelar</button>
-          <button type="submit" class="primary">Guardar</button>
+          <button type="button" id="cancel">${t('cancel')}</button>
+          <button type="submit" class="primary">${t('save')}</button>
         </div>
       </form>
     `;
@@ -92,24 +95,39 @@ export class LnNovelWizard extends BaseElement {
     this.$('form').addEventListener('submit', (e) => {
       e.preventDefault();
       const fd = new FormData(e.target);
+      const raw = fd.get('availableTargetLangs') ?? '';
+      const langs = raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      // Garantizamos que el idioma activo de la UI siempre esté disponible.
+      if (!langs.includes(i18n.current)) langs.push(i18n.current);
+
       const updated = {
         ...this._meta,
         nameEs: fd.get('nameEs')?.trim(),
         nameCa: fd.get('nameCa')?.trim(),
         banner: fd.get('banner')?.trim(),
         sourceLang: fd.get('sourceLang')?.trim(),
-        targetLangs: fd
-          .get('targetLangs')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
+        availableTargetLangs: langs,
         hasAllChapters: fd.get('hasAllChapters') === 'true',
-        knownChapterCount: fd.get('hasAllChapters') === 'false' ? Number(fd.get('knownChapterCount')) : null,
+        knownChapterCount:
+          fd.get('hasAllChapters') === 'false' ? Number(fd.get('knownChapterCount')) : null,
         setupPending: false,
       };
       this.emit('wizard-saved', updated);
       this.close();
     });
+  }
+
+  // Refresca textos al cambiar de idioma
+  connectedCallback() {
+    this._off = i18n.onChange(() => {
+      if (this._meta) this.render();
+    });
+  }
+  disconnectedCallback() {
+    this._off?.();
   }
 }
 

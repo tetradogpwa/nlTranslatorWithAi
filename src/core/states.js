@@ -1,4 +1,9 @@
 // src/core/states.js
+//
+// Estados y utilidades puras (sin DOM). El idioma destino activo lo
+// gestiona i18n/strings.js; aquí solo guardamos el idioma ORIGINAL de
+// la novela y los idiomas DESTINO DISPONIBLES (opcional).
+
 export const NovelStatus = Object.freeze({
   NEW: 'NEW',
   PENDING_SETUP: 'PENDING_SETUP',
@@ -7,15 +12,6 @@ export const NovelStatus = Object.freeze({
   FINISHED: 'FINISHED',
 });
 
-export const NovelStatusLabel = {
-  [NovelStatus.NEW]: 'Nueva',
-  [NovelStatus.PENDING_SETUP]: 'Configuración pendiente',
-  [NovelStatus.TRANSLATING]: 'En traducción',
-  [NovelStatus.REVIEWING]: 'En revisión',
-  [NovelStatus.FINISHED]: 'Finalizada',
-};
-
-/** Estado de un capítulo para UN idioma concreto. El orden importa: define el flujo. */
 export const ChapterLangStatus = Object.freeze({
   PENDING: 'PENDING',
   GLOSSARY_GENERATED: 'GLOSSARY_GENERATED',
@@ -25,18 +21,9 @@ export const ChapterLangStatus = Object.freeze({
   FINISHED: 'FINISHED',
 });
 
-export const ChapterLangStatusLabel = {
-  [ChapterLangStatus.PENDING]: 'Pendiente',
-  [ChapterLangStatus.GLOSSARY_GENERATED]: 'Glosario generado',
-  [ChapterLangStatus.GLOSSARY_APPROVED]: 'Glosario aprobado',
-  [ChapterLangStatus.TRANSLATED]: 'Traducción realizada',
-  [ChapterLangStatus.IN_REVIEW]: 'En revisión',
-  [ChapterLangStatus.FINISHED]: 'Finalizado',
-};
-
 const ORDER = Object.values(ChapterLangStatus);
 
-/** Comprueba si una transición de estado de capítulo+idioma es válida (solo se permite avanzar o retroceder un paso, o forzarse manualmente). */
+/** Comprueba si una transición de estado es válida (un paso o mantenerse). */
 export function canTransition(from, to) {
   const fromIdx = ORDER.indexOf(from);
   const toIdx = ORDER.indexOf(to);
@@ -49,33 +36,18 @@ export function nextStatus(current) {
   return ORDER[Math.min(idx + 1, ORDER.length - 1)];
 }
 
-/** Calcula el estado global de la novela a partir de los estados de todos sus capítulos/idiomas. */
-export function computeNovelStatus(novelMeta, chapterStates) {
-  if (novelMeta.setupPending) return NovelStatus.PENDING_SETUP;
-  if (chapterStates.length === 0) return NovelStatus.NEW;
-  const allFinished = chapterStates.every((s) => s.status === ChapterLangStatus.FINISHED);
-  if (allFinished) return NovelStatus.FINISHED;
-  const anyInReview = chapterStates.some((s) => s.status === ChapterLangStatus.IN_REVIEW);
-  if (anyInReview) return NovelStatus.REVIEWING;
-  const anyStarted = chapterStates.some((s) => s.status !== ChapterLangStatus.PENDING);
-  if (anyStarted) return NovelStatus.TRANSLATING;
-  return NovelStatus.NEW;
-}
-
 /**
  * Devuelve el número del último capítulo pendiente (no finalizado) para un idioma concreto.
- * Si todos están finalizados, devuelve el último número.
+ * Si todos están finalizados, devuelve el último.
  * Si no hay capítulos, devuelve null.
  */
 export function findLastPendingChapter(chapterNumbers, langStatesByNumber) {
   if (!chapterNumbers.length) return null;
-  // Ordenamos por número natural por si acaso
   const sorted = [...chapterNumbers].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   for (let i = sorted.length - 1; i >= 0; i--) {
     const num = sorted[i];
     const state = langStatesByNumber.get(num);
     if (state?.status !== ChapterLangStatus.FINISHED) return num;
   }
-  // Todos finalizados: devolvemos el último para que al menos se pueda leer
   return sorted[sorted.length - 1];
 }

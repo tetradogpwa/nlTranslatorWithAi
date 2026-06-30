@@ -61,14 +61,18 @@ export class FsManager {
   }
 
   /** Intenta recuperar un handle guardado en una sesión anterior. */
-  async tryRestore() {
-    const saved = await idbGet(ROOT_HANDLE_KEY);
-    if (!saved) return false;
-    const granted = await this.#verifyPermission(saved, true);
-    if (!granted) return false;
-    this.rootHandle = saved;
+async tryRestore() {
+    const handle = await idbGet(ROOT_HANDLE_KEY);
+    if (!handle) return false;
+
+    // Solo comprobar si sigue habiendo permiso
+    if (await handle.queryPermission({ mode: 'readwrite' }) !== 'granted') {
+        return false;
+    }
+
+    this.rootHandle = handle;
     return true;
-  }
+}
 
   /** Lanza el selector nativo de carpeta y la guarda como raíz del proyecto. */
   async pickProjectFolder() {
