@@ -17,7 +17,9 @@ export class LnNovelCard extends BaseElement {
       :host { display:block; }
       .card {
         display: grid;
-        grid-template-columns: 200px 1fr;
+        /* El banner ocupa el 55% del ancho (siempre ≥ la mitad).
+           En pantallas muy estrechas cae a 1fr (banner encima). */
+        grid-template-columns: minmax(50%, 1fr) 1fr;
         gap: var(--ln-space-4);
         background: var(--ln-bg-card);
         border: 1px solid var(--ln-border);
@@ -34,9 +36,11 @@ export class LnNovelCard extends BaseElement {
         background: linear-gradient(135deg, var(--ln-bg-elevated), var(--ln-bg));
         background-size: cover;
         background-position: center;
-        min-height: 130px;
+        /* Más alto para que la imagen luzca como banner rectangular */
+        min-height: 220px;
         position: relative;
       }
+
       .star {
         position: absolute; top: var(--ln-space-2); right: var(--ln-space-2);
         font-size: 20px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
@@ -62,9 +66,10 @@ export class LnNovelCard extends BaseElement {
       .bar > span { display:block; height:100%; background: var(--ln-accent); }
       .count { font-size: 11px; color: var(--ln-text-muted); margin-top: var(--ln-space-1); }
 
+      /* Móvil: layout vertical con banner arriba ocupando todo el ancho */
       @media (max-width: 600px) {
-        .card { grid-template-columns: 110px 1fr; }
-        .banner { min-height: 110px; }
+        .card { grid-template-columns: 1fr; }
+        .banner { min-height: 180px; }
         .title { font-size: 14px; }
       }
     `;
