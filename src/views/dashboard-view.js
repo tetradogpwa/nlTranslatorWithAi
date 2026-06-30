@@ -1,0 +1,110 @@
+// src/views/dashboard-view.js
+import { BaseElement } from '../components/base-element.js';
+import '../components/ln-novel-grid.js';
+import '../components/ln-novel-wizard.js';
+import { projectManager } from '../core/projectManager.js';
+import { chapterManager } from '../core/chapterManager.js';
+import { computeNovelStatus } from '../core/states.js';
+
+export class DashboardView extends BaseElement {
+  styles() {
+    return `
+      .header { display:flex; justify-content:space-between; align-items:center; padding: var(--ln-space-5); }
+      h1 { font-size:18px; margin:0; }
+      button.sync { background: var(--ln-bg-card); border:1px solid var(--ln-border); color:var(--ln-text); border-radius: var(--ln-radius-sm); padding: 8px 14px; font-size:13px; }
+      main { padding: 0 var(--ln-space-5) var(--ln-space-6); }
+      .pending-banner {
+        margin: 0 var(--ln-space-5) var(--ln-space-4);
+        background: var(--ln-bg-card); border:1px solid var(--ln-warning);
+        color: var(--ln-warning); border-radius: var(--ln-radius-sm);
+        padding: var(--ln-space-2) var(--ln-space-3); font-size: 13px;
+      }
+    `;
+  }
+
+  template() {
+    return `
+      <div class="header">
+        <h1>Tus novelas</h1>
+        <button class="sync" id="syncBtn">↻ Sincronizar</button>
+      </div>
+      <p class="pending-banner" id="pendingBanner" hidden></p>
+      <main><ln-novel-grid></ln-novel-grid></main>
+      <ln-novel-wizard></ln-novel-wizard>
+    `;
+  }
+
+  async connectedCallback() {
+    this.render();
+    this.$('#syncBtn').addEventListener('click', () => this.#syncAndLoad());
+
+    // Las tarjetas emiten 'open-novel' (composed:true, burbujea hasta ln-app).
+    // Lo interceptamos aquí en el shadowRoot ANTES de que salga,
+    // detenemos la propagación y decidimos qué hacer nosotros.
+    this.shadowRoot.addEventListener('open-novel', (e) => {
+      e.stopPropagation();
+      this.#handleOpenNovel(e.detail.id);
+    }, true); // capture:true → lo recibimos antes de que llegue a ningún hijo
+
+    this.$('ln-novel-wizard').addEventListener('wizard-saved', async (e) => {
+      await projectManager.saveNovelMeta(e.detail.originalName, e.detail);
+      await this.#loadNovels();
+    });
+
+    await this.#syncAndLoad();
+  }
+
+  async #handleOpenNovel(novelId) {
+    const meta = await projectManager.getNovelMeta(novelId);
+    if (meta?.setupPending) {
+      const chapters = await projectManager.getChapterNumbers(novelId);
+      this.$('ln-novel-wizard').open({ meta, detectedChapterCount: chapters.length });
+      return;
+    }
+    // Emitimos un evento DISTINTO ('navigate-to-novel') para que ln-app
+    // lo escuche sin riesgo de confundirlo con los eventos crudos de tarjetas.
+    this.emit('navigate-to-novel', { id: novelId });
+  }
+
+  async #syncAndLoad() {
+    await projectManager.syncProject();
+    const novels = await this.#loadNovels();
+    const pendingCount = novels.filter((n) => n.setupPending).length;
+    const banner = this.$('#pendingBanner');
+    if (pendingCount) {
+      banner.hidden = false;
+      banner.textContent = `${pendingCount} novela(s) pendiente(s) de configurar — haz clic en su tarjeta para completar la ficha.`;
+    } else {
+      banner.hidden = true;
+    }
+  }
+
+  async #loadNovels() {
+    const novels = await projectManager.getNovelList();
+    const enriched = [];
+    for (const n of novels) {
+      const chapterNumbers = await projectManager.getChapterNumbers(n.id);
+      const langProgress = [];
+      for (const lang of n.targetLangs ?? []) {
+        const progress = await chapterManager.computeProgress(n.id, chapterNumbers, lang);
+        langProgress.push({ langcode: lang, progress });
+      }
+      const chapterStatesFlat = [];
+      for (const num of chapterNumbers) {
+        for (const lang of n.targetLangs ?? []) {
+          chapterStatesFlat.push(await chapterManager.getLangState(n.id, num, lang));
+        }
+      }
+      enriched.push({
+        ...n,
+        chapterCount: chapterNumbers.length,
+        langProgress,
+        status: computeNovelStatus(n, chapterStatesFlat),
+      });
+    }
+    this.$('ln-novel-grid').novels = enriched;
+    return enriched;
+  }
+}
+
+customElements.define('dashboard-view', DashboardView);

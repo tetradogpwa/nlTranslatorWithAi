@@ -1,0 +1,16 @@
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--ln-bg);
+  color: var(--ln-text);
+  font-family: var(--ln-font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+ln-app { display: block; height: 100%; }
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+a { color: var(--ln-accent); }
+::selection { background: var(--ln-accent); color: #fff; }
