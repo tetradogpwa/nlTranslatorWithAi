@@ -97,4 +97,42 @@ ${obsBlock || '(ninguna)'}
 ${translatedText}
 \`\`\``;
   },
+
+  /**
+   * Prompt de limpieza de japonés colado en una traducción ya terminada.
+   * Devuelve EXCLUSIVAMENTE el texto traducido corregido (sin JSON, sin
+   * markdown, sin explicaciones), para que el usuario solo tenga que
+   * pegarlo de vuelta en el modal.
+   */
+  buildJapaneseCleanupPrompt({ targetLang, originalText, translatedText, japaneseRuns }) {
+    const runsBlock = japaneseRuns.length
+      ? japaneseRuns
+          .slice(0, 50)
+          .map((r, i) => `${i + 1}. "${r.text}"`)
+          .join('\n')
+      : '(no se detectaron runs concretas; revisa el texto completo)';
+    return `Eres un editor de traducción de novelas ligeras. La siguiente traducción a ${targetLang} todavía contiene caracteres japoneses que se han colado (típicamente nombres propios, términos mágicos o frases cortas que la IA no llegó a traducir). Tu trabajo es ÚNICAMENTE sustituir cada ocurrencia por su equivalente natural en ${targetLang} o reescribir la frase para que suene fluida en ${targetLang}.
+
+## Runs concretas detectadas (puede haber más dentro del texto)
+${runsBlock}
+
+## Reglas importantes
+- Conserva TODA la estructura, saltos de párrafo y formato del texto original.
+- NO cambies nada que ya esté correctamente en ${targetLang}.
+- SOLO modifica las zonas con japonés colado; el resto déjalo tal cual.
+- Si un nombre propio aparece repetido, mantén una traducción coherente.
+- Para frases cortas en japonés integradas en la narración, tradúcelas de forma natural al ${targetLang} o elimínalas si son redundantes.
+- NO añadas notas, ni comentarios, ni markdown. NO envuelvas el resultado en bloques de código.
+- Devuelve EXCLUSIVAMENTE el texto corregido completo, tal cual lo leerá el usuario final.
+
+## Texto original (solo como referencia para entender el contexto)
+\`\`\`
+${originalText}
+\`\`\`
+
+## Traducción actual con japonés colado
+\`\`\`
+${translatedText}
+\`\`\``;
+  },
 };

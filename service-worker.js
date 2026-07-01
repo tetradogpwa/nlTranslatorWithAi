@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = 'ln-translator-shell-v3.4';
+const CACHE_NAME = 'ln-translator-shell-v3.5';
 
 const SHELL_FILES = [
   './',
@@ -35,6 +35,8 @@ const SHELL_FILES = [
   './src/components/ln-reader.js',
   './src/components/ln-add-lang-modal.js',
   './src/components/ln-add-title-modal.js',
+  './src/components/ln-clean-jp-modal.js',
+  './src/core/japaneseDetector.js',
 ];
 
 self.addEventListener('install', (event) => {

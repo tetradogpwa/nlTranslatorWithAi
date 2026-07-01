@@ -59,6 +59,17 @@ export class ChapterManager {
     await this.setLangState(novelName, num, langcode, { status: ChapterLangStatus.TRANSLATED });
   }
 
+  /**
+   * Sobrescribe el texto de la traducción SIN cambiar el estado del
+   * capítulo. Pensado para limpiezas puntuales (p. ej. eliminar japonés
+   * colado) sobre un capítulo ya finalizado, sin tener que revertir el
+   * flujo completo. Solo actualiza `lastUpdated`.
+   */
+  async writeCleanedTranslation(novelName, num, langcode, text) {
+    await fsManager.writeText(this.translationPath(novelName, num, langcode), text);
+    await this.setLangState(novelName, num, langcode, {});
+  }
+
   async getReviewNotes(novelName, num, langcode) {
     const data = await fsManager.readJSON(`Library/${novelName}/chapters/${num}/review/${langcode}.json`);
     return data?.observations ?? [];

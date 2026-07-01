@@ -39,6 +39,7 @@ export class LnReader extends BaseElement {
         <button id="prevChapter">${i18n.t('reader.prev')}</button>
         <button id="nextChapter">${i18n.t('reader.next')}</button>
         <button id="bookmark">${i18n.t('reader.bookmark')}</button>
+        <button id="cleanJp" title="${i18n.t('reader.cleanJpTitle')}">${i18n.t('reader.cleanJp')}</button>
       </div>
       <div class="reader" id="readerBody">
         ${paragraphs.map((p) => `<p>${p}</p>`).join('')}
@@ -65,6 +66,10 @@ export class LnReader extends BaseElement {
     });
     this.$('#prevChapter').addEventListener('click', () => this.emit('navigate-chapter', { dir: -1 }));
     this.$('#nextChapter').addEventListener('click', () => this.emit('navigate-chapter', { dir: 1 }));
+    const cleanJpBtn = this.$('#cleanJp');
+    if (cleanJpBtn) {
+      cleanJpBtn.addEventListener('click', () => this.emit('clean-jp', this._ctx));
+    }
     this.$('#bookmark').addEventListener('click', () => {
       const body2 = this.$('#readerBody');
       const fraction = body2.scrollTop / Math.max(1, body2.scrollHeight - body2.clientHeight);

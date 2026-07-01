@@ -11,6 +11,7 @@ import { ChapterLangStatus, findFirstPendingChapter } from '../core/states.js';
 import { i18n } from '../i18n/strings.js';
 import { navigateTo } from '../core/router.js';
 import './ln-glossary-modal.js';
+import '../components/ln-clean-jp-modal.js';
 
 export class NovelView extends BaseElement {
   async open(novelId, opts = {}) {
@@ -366,6 +367,25 @@ export class NovelView extends BaseElement {
         await this.#loadReaderChapter(novelName, target, targetLang);
       }
     });
+    this._readerEl.addEventListener('clean-jp', (e) => this.#openCleanJp(e.detail));
+  }
+
+  #openCleanJp({ novelName, chapterNum, langcode }) {
+    if (!this._cleanJpModal) {
+      const modal = document.createElement('ln-clean-jp-modal');
+      this.shadowRoot.appendChild(modal);
+      modal.addEventListener('jp-cleaned', async (e) => {
+        // Refrescar el reader con el texto recién limpiado.
+        if (this._readerEl && this._readerOverlay?.style.display !== 'none') {
+          await this.#loadReaderChapter(e.detail.novelName, e.detail.chapterNum, e.detail.langcode);
+        }
+        // Actualizar el lastUpdated en la columna lateral.
+        await this.#renderChapterList();
+        await this.#loadWorkflow();
+      });
+      this._cleanJpModal = modal;
+    }
+    this._cleanJpModal.open({ novelName, chapterNum, langcode });
   }
 
   async #loadReaderChapter(novelName, chapterNum, targetLang) {
