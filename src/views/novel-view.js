@@ -10,6 +10,7 @@ import { chapterManager } from '../core/chapterManager.js';
 import { ChapterLangStatus, findLastPendingChapter } from '../core/states.js';
 import { i18n } from '../i18n/strings.js';
 import { navigateTo } from '../core/router.js';
+import './ln-glossary-modal.js';
 
 export class NovelView extends BaseElement {
   async open(novelId, opts = {}) {
@@ -64,19 +65,15 @@ export class NovelView extends BaseElement {
       this._addTitleModal.open({ novelName: this._novelId, langcode: lang });
       return;
     }
-
     // Importante: hay que tener this._chapters cargado ANTES de resolver el
     // capítulo inicial, o resolveInitialChapter() devuelve null (bug del
     // "Capítulo null" al entrar por primera vez en una serie).
     this._chapters = await projectManager.getChapterNumbers(this._novelId);
-
     const route = this._pendingRoute;
     this._pendingRoute = null;
     const routedChapter = route?.chapterNum ? this.#matchChapterNumber(route.chapterNum) : null;
     this._selectedChapter = routedChapter ?? (await this.#resolveInitialChapter());
-
     await this.render2();
-
     if (this._selectedChapter) {
       const state = await chapterManager.getLangState(this._novelId, this._selectedChapter, lang);
       if (route?.mode === 'read' && state.status === ChapterLangStatus.FINISHED) {
@@ -171,6 +168,14 @@ export class NovelView extends BaseElement {
       }
       h2 { margin:0; }
       .chapter-meta { font-size:12px; color: var(--ln-text-muted); margin: 0 0 var(--ln-space-4); }
+      .glossary-btn {
+        width: 100%; text-align: left;
+        background: var(--ln-bg-card); border: 1px solid var(--ln-border); color: var(--ln-text);
+        border-radius: 6px; padding: 8px 10px; font-size: 13px;
+        margin-bottom: var(--ln-space-3);
+        display: flex; align-items: center; gap: 6px;
+      }
+      .glossary-btn:hover { border-color: var(--ln-accent); }
     `;
   }
 
@@ -186,6 +191,7 @@ export class NovelView extends BaseElement {
             <ln-lang-switcher></ln-lang-switcher>
           </div>
           <p class="chapter-meta">${flag} ${lang}</p>
+          <button class="glossary-btn" id="glossaryBtn">${i18n.t('novel.glossaryBtn')}</button>
           <ul id="chapterList"></ul>
         </aside>
         <section>
@@ -202,6 +208,7 @@ export class NovelView extends BaseElement {
   async render2() {
     this.render();
     this.$('#backBtn').addEventListener('click', () => this.emit('back-to-dashboard'));
+    this.$('#glossaryBtn').addEventListener('click', () => this.#openGlossary());
     // Cambio de idioma → re-evaluamos (puede requerir añadir idioma o título)
     this.$('ln-lang-switcher').addEventListener('click', (e) => e.stopPropagation());
     // El switcher ya cambia i18n.current; nos suscribimos:
@@ -210,6 +217,15 @@ export class NovelView extends BaseElement {
     this.$('#workflow').addEventListener('read-chapter', (e) => this.#openReader(e.detail));
     await this.#renderChapterList();
     await this.#loadWorkflow();
+  }
+
+  #openGlossary() {
+    if (!this._glossaryModal) {
+      const modal = document.createElement('ln-glossary-modal');
+      this.shadowRoot.appendChild(modal);
+      this._glossaryModal = modal;
+    }
+    this._glossaryModal.open({ novelName: this._novelId, langcode: i18n.current });
   }
 
   async #renderChapterList() {
@@ -360,4 +376,5 @@ export class NovelView extends BaseElement {
     this._offLang?.();
   }
 }
+
 customElements.define('novel-view', NovelView);

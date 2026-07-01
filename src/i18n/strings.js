@@ -47,7 +47,19 @@ const STRINGS = {
       pendingBanner: (n) => `${n} novela(s) pendiente(s) de configurar — haz clic en su tarjeta para completar la ficha.`,
     },
     novel: {
-      // es-ES.novel
+
+      glossaryBtn: '📖 Ver glosario general',
+
+      glossary: {
+        title: (lang) => `Glosario general · ${lang}`,
+        close: 'Cerrar',
+        searchPlaceholder: 'Buscar término, lectura o traducción…',
+        count: (n) => `${n} término(s)`,
+        notes: 'Notas',
+        empty: 'Todavía no hay términos aprobados en este idioma.',
+      },
+
+
       notFound: 'No se ha encontrado esa novela (puede que la carpeta se haya movido o eliminado). Volviendo a la lista…',
       missingBadge: 'No encontrada',
 
@@ -177,7 +189,18 @@ const STRINGS = {
       pendingBanner: (n) => `${n} novel·la(es) pendent(s) de configurar — fes clic a la targeta per completar la fitxa.`,
     },
     novel: {
-      // ca-ES.novel
+
+      // ca-ES
+      glossary: {
+        title: (lang) => `Glossari general · ${lang}`,
+        close: 'Tancar',
+        searchPlaceholder: 'Cerca terme, lectura o traducció…',
+        count: (n) => `${n} terme(s)`,
+        notes: 'Notes',
+        empty: 'Encara no hi ha termes aprovats en aquest idioma.',
+      },
+
+      glossaryBtn: '📖 Veure glossari general',
       notFound: 'No s\'ha trobat aquesta novel·la (potser la carpeta s\'ha mogut o eliminat). Tornant a la llista…',
       missingBadge: 'No trobada',
       chapterTitle: (num, lang) => `Capítol ${num} · ${lang}`,

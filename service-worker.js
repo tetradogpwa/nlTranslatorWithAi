@@ -1,10 +1,10 @@
 // service-worker.js
-const CACHE_NAME = 'ln-translator-shell-v3.2';
+const CACHE_NAME = 'ln-translator-shell-v3.3';
 
 const SHELL_FILES = [
   './',
   './index.html',
-  './public/manifest.json',
+  './manifest.json',
   './public/icons/icon-192.png',
   './public/icons/icon-512.png',
   './public/icons/icon-maskable-512.png',
