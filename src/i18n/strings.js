@@ -45,19 +45,19 @@ const STRINGS = {
       title: 'Tus novelas',
       empty: 'No se han detectado novelas todavía. Añade carpetas con capítulos .txt dentro de Source/.',
       pendingBanner: (n) => `${n} novela(s) pendiente(s) de configurar — haz clic en su tarjeta para completar la ficha.`,
+    }, glossary: {
+      title: (lang) => `Glosario general · ${lang}`,
+      close: 'Cerrar',
+      searchPlaceholder: 'Buscar término, lectura o traducción…',
+      count: (n) => `${n} término(s)`,
+      notes: 'Notas',
+      empty: 'Todavía no hay términos aprobados en este idioma.',
     },
     novel: {
 
       glossaryBtn: '📖 Ver glosario general',
 
-      glossary: {
-        title: (lang) => `Glosario general · ${lang}`,
-        close: 'Cerrar',
-        searchPlaceholder: 'Buscar término, lectura o traducción…',
-        count: (n) => `${n} término(s)`,
-        notes: 'Notas',
-        empty: 'Todavía no hay términos aprobados en este idioma.',
-      },
+
 
 
       notFound: 'No se ha encontrado esa novela (puede que la carpeta se haya movido o eliminado). Volviendo a la lista…',
@@ -187,18 +187,18 @@ const STRINGS = {
       title: 'Les teves novel·les',
       empty: 'Encara no s\'han detectat novel·les. Afegeix carpetes amb capítols .txt dins de Source/.',
       pendingBanner: (n) => `${n} novel·la(es) pendent(s) de configurar — fes clic a la targeta per completar la fitxa.`,
+    },      // ca-ES
+    glossary: {
+      title: (lang) => `Glossari general · ${lang}`,
+      close: 'Tancar',
+      searchPlaceholder: 'Cerca terme, lectura o traducció…',
+      count: (n) => `${n} terme(s)`,
+      notes: 'Notes',
+      empty: 'Encara no hi ha termes aprovats en aquest idioma.',
     },
     novel: {
 
-      // ca-ES
-      glossary: {
-        title: (lang) => `Glossari general · ${lang}`,
-        close: 'Tancar',
-        searchPlaceholder: 'Cerca terme, lectura o traducció…',
-        count: (n) => `${n} terme(s)`,
-        notes: 'Notes',
-        empty: 'Encara no hi ha termes aprovats en aquest idioma.',
-      },
+
 
       glossaryBtn: '📖 Veure glossari general',
       notFound: 'No s\'ha trobat aquesta novel·la (potser la carpeta s\'ha mogut o eliminat). Tornant a la llista…',
