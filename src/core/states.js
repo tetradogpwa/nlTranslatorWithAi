@@ -37,17 +37,21 @@ export function nextStatus(current) {
 }
 
 /**
- * Devuelve el número del último capítulo pendiente (no finalizado) para un idioma concreto.
- * Si todos están finalizados, devuelve el último.
+ * Devuelve el número del primer capítulo pendiente (no finalizado) en orden
+ * natural para un idioma concreto. Es decir, el capítulo por el que el
+ * usuario debería seguir trabajando: si hay uno "en curso" en medio de la
+ * serie, devuelve ese (para poder reanudar); si no, devuelve el siguiente
+ * a empezar; y si todos están finalizados, devuelve el último para que se
+ * pueda releer desde el final.
  * Si no hay capítulos, devuelve null.
  */
-export function findLastPendingChapter(chapterNumbers, langStatesByNumber) {
+export function findFirstPendingChapter(chapterNumbers, langStatesByNumber) {
   if (!chapterNumbers.length) return null;
   const sorted = [...chapterNumbers].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  for (let i = sorted.length - 1; i >= 0; i--) {
-    const num = sorted[i];
+  for (const num of sorted) {
     const state = langStatesByNumber.get(num);
     if (state?.status !== ChapterLangStatus.FINISHED) return num;
   }
+  // Todos finalizados: devolvemos el último para que al menos se pueda leer.
   return sorted[sorted.length - 1];
 }

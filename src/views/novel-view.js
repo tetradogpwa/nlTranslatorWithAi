@@ -7,7 +7,7 @@ import '../components/ln-add-title-modal.js';
 import '../components/ln-lang-switcher.js';
 import { projectManager, getNovelTitle } from '../core/projectManager.js';
 import { chapterManager } from '../core/chapterManager.js';
-import { ChapterLangStatus, findLastPendingChapter } from '../core/states.js';
+import { ChapterLangStatus, findFirstPendingChapter } from '../core/states.js';
 import { i18n } from '../i18n/strings.js';
 import { navigateTo } from '../core/router.js';
 import './ln-glossary-modal.js';
@@ -131,7 +131,7 @@ export class NovelView extends BaseElement {
     for (const num of this._chapters) {
       stateByNum.set(num, await chapterManager.getLangState(this._novelId, num, lang));
     }
-    return findLastPendingChapter(this._chapters, stateByNum) ?? this._chapters[0];
+    return findFirstPendingChapter(this._chapters, stateByNum) ?? this._chapters[0];
   }
 
   styles() {
