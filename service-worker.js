@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = 'ln-translator-shell-v3.1';
+const CACHE_NAME = 'ln-translator-shell-v3.2';
 
 const SHELL_FILES = [
   './',
