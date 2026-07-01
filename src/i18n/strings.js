@@ -84,6 +84,10 @@ const STRINGS = {
       save: 'Guardar',
     },
     workflow: {
+      resetBtn: '↺ Reiniciar capítulo',
+      resetConfirmMsg: '¿Seguro? Se borrará la traducción y las notas de revisión de este idioma.',
+      resetConfirmYes: 'Sí, reiniciar',
+      resetConfirmNo: 'Cancelar',
       steps: {
         extract: 'Extracción de glosario',
         review: 'Revisión de glosario',
@@ -208,6 +212,14 @@ const STRINGS = {
       save: 'Desar',
     },
     workflow: {
+
+      resetBtn: '↺ Reinicia el capítol',
+      resetConfirmMsg: 'Segur? S\'esborrarà la traducció i les notes de revisió d\'aquest idioma.',
+      resetConfirmYes: 'Sí, reinicia',
+      resetConfirmNo: 'Cancel·lar',
+
+
+
       steps: {
         extract: 'Extracció de glossari',
         review: 'Revisió de glossari',

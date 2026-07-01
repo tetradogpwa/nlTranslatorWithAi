@@ -6,7 +6,27 @@ export class ChapterManager {
   async getOriginalText(novelName, num) {
     return fsManager.readText(`Library/${novelName}/chapters/${num}/original.txt`);
   }
-
+/**
+   * Reinicia el progreso de un capítulo para un idioma concreto, volviendo
+   * a PENDING. Útil cuando la IA "se equivocó" (p.ej. dijo que había
+   * terminado la traducción pero el texto está incompleto). Borra la
+   * traducción y las notas de revisión de ese idioma; NO toca el glosario
+   * del capítulo, que puede ser compartido entre idiomas.
+   */
+  async resetLangProgress(novelName, num, langcode) {
+    await fsManager.deleteFile(this.translationPath(novelName, num, langcode));
+    await fsManager.deleteFile(`Library/${novelName}/chapters/${num}/review/${langcode}.json`);
+    const state = (await fsManager.readJSON(`Library/${novelName}/chapters/${num}/state.json`)) ?? {
+      number: num,
+      languages: {},
+    };
+    state.languages[langcode] = {
+      status: ChapterLangStatus.PENDING,
+      lastUpdated: new Date().toISOString(),
+    };
+    await fsManager.writeJSON(`Library/${novelName}/chapters/${num}/state.json`, state);
+    return state.languages[langcode];
+  }
   async getLangState(novelName, num, langcode) {
     const state = await fsManager.readJSON(`Library/${novelName}/chapters/${num}/state.json`);
     return state?.languages?.[langcode] ?? { status: ChapterLangStatus.PENDING };

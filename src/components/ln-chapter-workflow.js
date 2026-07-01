@@ -8,8 +8,11 @@ import { ChapterLangStatus } from '../core/states.js';
 import { i18n } from '../i18n/strings.js';
 
 export class LnChapterWorkflow extends BaseElement {
+  #resetConfirming = false;
+
   async load({ novelName, chapterNum, sourceLang, targetLang }) {
     this._ctx = { novelName, chapterNum, sourceLang, targetLang };
+    this.#resetConfirming = false;
     await this.#refresh();
   }
 
@@ -37,18 +40,34 @@ export class LnChapterWorkflow extends BaseElement {
     this._glossary = await glossaryManager.getGlossaryForLang(novelName, targetLang);
     this.render();
     this.#bindStep();
+    this.#bindResetControls();
   }
 
   styles() {
     return `
       .wrap { display:flex; flex-direction:column; gap: var(--ln-space-4); }
+      .top-row { display:flex; justify-content:space-between; align-items:flex-start; gap: var(--ln-space-3); flex-wrap: wrap; }
       .status-badge {
         align-self:flex-start; font-size:11px; text-transform:uppercase; letter-spacing:.03em;
         background: var(--ln-bg-card); border:1px solid var(--ln-border); border-radius: 999px;
         padding: 4px 10px; color: var(--ln-accent);
       }
       .status-badge.finished { color: var(--ln-success); border-color: var(--ln-success); }
-
+      .reset-zone { display:flex; align-items:center; gap: var(--ln-space-2); flex-wrap: wrap; }
+      button.reset-btn {
+        background: transparent; border:1px solid var(--ln-danger); color: var(--ln-danger);
+        border-radius: var(--ln-radius-sm); padding: 6px 12px; font-size: 12px; font-weight: 600;
+      }
+      button.reset-btn:hover { background: rgba(224, 98, 94, .1); }
+      .reset-confirm { display:flex; align-items:center; gap: var(--ln-space-2); font-size: 12px; color: var(--ln-danger); }
+      button.reset-confirm-yes {
+        background: var(--ln-danger); border:none; color:#fff;
+        border-radius: var(--ln-radius-sm); padding: 6px 12px; font-size: 12px; font-weight:600;
+      }
+      button.reset-confirm-no {
+        background: transparent; border:1px solid var(--ln-border); color: var(--ln-text);
+        border-radius: var(--ln-radius-sm); padding: 6px 12px; font-size: 12px;
+      }
       .finished-banner {
         display:flex; align-items:center; gap: var(--ln-space-3);
         background: var(--ln-bg-card); border:1px solid var(--ln-success);
@@ -60,7 +79,6 @@ export class LnChapterWorkflow extends BaseElement {
         background: var(--ln-success); color:#0e0f12; border:none;
         border-radius: var(--ln-radius-sm); padding: 8px 14px; font-size: 13px; font-weight: 600;
       }
-
       .glossary-review { display:flex; flex-direction:column; gap: var(--ln-space-2); }
       .term-row {
         display:grid; grid-template-columns: 1fr 1fr 2fr auto;
@@ -94,10 +112,56 @@ export class LnChapterWorkflow extends BaseElement {
   template() {
     const status = this._langState?.status ?? 'PENDING';
     const isFinished = status === ChapterLangStatus.FINISHED;
+    const canReset = status !== ChapterLangStatus.PENDING;
     return `<div class="wrap">
-      <span class="status-badge ${isFinished ? 'finished' : ''}">${i18n.t(`status.chapter.${status}`)}</span>
+      <div class="top-row">
+        <span class="status-badge ${isFinished ? 'finished' : ''}">${i18n.t(`status.chapter.${status}`)}</span>
+        ${canReset ? `
+          <div class="reset-zone" id="resetZone">
+            ${this.#resetConfirming ? `
+              <span class="reset-confirm">${i18n.t('workflow.resetConfirmMsg')}</span>
+              <button class="reset-confirm-yes" id="resetYes">${i18n.t('workflow.resetConfirmYes')}</button>
+              <button class="reset-confirm-no" id="resetNo">${i18n.t('workflow.resetConfirmNo')}</button>
+            ` : `
+              <button class="reset-btn" id="resetBtn">${i18n.t('workflow.resetBtn')}</button>
+            `}
+          </div>
+        ` : ''}
+      </div>
       <div id="stepArea"></div>
     </div>`;
+  }
+
+  #bindResetControls() {
+    const zone = this.$('#resetZone');
+    if (!zone) return;
+    const resetBtn = this.$('#resetBtn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        this.#resetConfirming = true;
+        this.render();
+        this.#bindStep();
+        this.#bindResetControls();
+      });
+    }
+    const yesBtn = this.$('#resetYes');
+    if (yesBtn) {
+      yesBtn.addEventListener('click', async () => {
+        const { novelName, chapterNum, targetLang } = this._ctx;
+        await chapterManager.resetLangProgress(novelName, chapterNum, targetLang);
+        this.#resetConfirming = false;
+        await this.#refresh();
+      });
+    }
+    const noBtn = this.$('#resetNo');
+    if (noBtn) {
+      noBtn.addEventListener('click', () => {
+        this.#resetConfirming = false;
+        this.render();
+        this.#bindStep();
+        this.#bindResetControls();
+      });
+    }
   }
 
   #bindStep() {
@@ -207,14 +271,12 @@ export class LnChapterWorkflow extends BaseElement {
     const intro = document.createElement('p');
     intro.textContent = i18n.t('workflow.approveHelp');
     wrap.appendChild(intro);
-
     const continueBtn = document.createElement('button');
     continueBtn.className = 'continue-btn';
     continueBtn.textContent = i18n.t('workflow.continueTranslate');
     const updateContinueBtn = () => {
       continueBtn.disabled = terms.some((t) => !t.approved);
     };
-
     terms.forEach((term) => {
       const row = document.createElement('div');
       row.className = 'term-row' + (term.approved ? ' is-approved' : '');
@@ -297,7 +359,6 @@ export class LnChapterWorkflow extends BaseElement {
     const { novelName, chapterNum, targetLang } = this._ctx;
     const observations = await chapterManager.getReviewNotes(novelName, chapterNum, targetLang);
     const translatedText = await chapterManager.getTranslation(novelName, chapterNum, targetLang);
-
     if (!observations.length) {
       area.innerHTML = `<p>${i18n.t('workflow.noObservations')}</p><button id="finishBtn">${i18n.t('workflow.finishNow')}</button>`;
       area.querySelector('#finishBtn').addEventListener('click', async () => {
@@ -352,6 +413,7 @@ export class LnChapterWorkflow extends BaseElement {
       if (this._ctx) this.render();
     });
   }
+
   disconnectedCallback() {
     this._off?.();
   }
