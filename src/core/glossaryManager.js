@@ -75,7 +75,8 @@ export class GlossaryManager {
   /** Aprueba una entrada del glosario de capítulo y la fusiona en el glosario general del idioma. */
   async approveTerm(novelName, langcode, term) {
     const general = await this.getGeneralGlossary(novelName);
-    let entry = general.find((e) => e.term === term.term);
+    const norm = (s) => (s ?? '').trim().toLowerCase().normalize('NFKC');
+    let entry = general.find((e) => norm(e.term) === norm(term.term));
     if (!entry) {
       entry = {
         id: crypto.randomUUID(),
