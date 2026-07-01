@@ -5,6 +5,9 @@ import '../views/dashboard-view.js';
 import '../views/novel-view.js';
 import { i18n } from '../i18n/strings.js';
 import { parseRoute, onRouteChange, clearRoute } from '../core/router.js';
+import { novelListCache } from '../core/novelListCache.js';
+import { setFlash } from '../core/uiFlash.js';
+
 
 export class LnApp extends BaseElement {
   #currentNovelView = null;
@@ -98,8 +101,13 @@ export class LnApp extends BaseElement {
     }
     this.shadowRoot.innerHTML = `<style>${this.styles()}</style><novel-view></novel-view>`;
     const view = this.$('novel-view');
-    view.addEventListener('back-to-dashboard', () => {
+
+    view.addEventListener('back-to-dashboard', (e) => {
       clearRoute();
+      if (e.detail?.notFound) {
+        novelListCache.markMissing(e.detail.novelId);
+        setFlash('notFound');
+      }
       this.#showDashboard();
     });
     this.#currentNovelView = view;

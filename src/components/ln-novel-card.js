@@ -30,6 +30,8 @@ export class LnNovelCard extends BaseElement {
         width: 100%;
       }
       .card:hover { transform: translateY(-1px); box-shadow: var(--ln-shadow-2); border-color: var(--ln-accent); }
+      .card.is-missing { cursor: not-allowed; opacity: .55; }
+      .card.is-missing:hover { transform:none; box-shadow:none; border-color: var(--ln-border); }
       .banner {
         background: linear-gradient(135deg, var(--ln-bg-elevated), var(--ln-bg));
         background-size: cover;
@@ -40,6 +42,11 @@ export class LnNovelCard extends BaseElement {
       .star {
         position: absolute; top: var(--ln-space-2); right: var(--ln-space-2);
         font-size: 20px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
+      }
+      .missing-badge {
+        position: absolute; top: var(--ln-space-2); left: var(--ln-space-2);
+        background: var(--ln-danger); color:#fff; font-size:11px;
+        padding: 2px 8px; border-radius: 999px;
       }
       .lang-pill {
         position: absolute; bottom: var(--ln-space-2); left: var(--ln-space-2);
@@ -91,9 +98,10 @@ export class LnNovelCard extends BaseElement {
     const flag = i18n.available.find((l) => l.code === lang)?.flag ?? '';
     const title = getNovelTitle(n, lang) || n.originalName;
     return `
-      <div class="card">
+      <div class="card ${n.missing ? 'is-missing' : ''}">
         <div class="banner" style="${n.banner ? `background-image:url('${n.banner}')` : ''}">
           ${isFinished ? '<span class="star">⭐</span>' : ''}
+          ${n.missing ? `<span class="missing-badge">${i18n.t('novel.missingBadge')}</span>` : ''}
           <span class="lang-pill">${flag} ${lang}</span>
         </div>
         <div class="body">
@@ -119,11 +127,18 @@ export class LnNovelCard extends BaseElement {
   connectedCallback() {
     this.render();
     this._off = i18n.onChange(() => this.render());
-    this.addEventListener('click', () => this.emit('open-novel', { id: this._novel.id }));
+    this.addEventListener('click', () => {
+      if (this._novel?.missing) {
+        this.emit('open-missing-novel', { id: this._novel.id });
+        return;
+      }
+      this.emit('open-novel', { id: this._novel.id });
+    });
   }
 
   disconnectedCallback() {
     this._off?.();
   }
 }
+
 customElements.define('ln-novel-card', LnNovelCard);

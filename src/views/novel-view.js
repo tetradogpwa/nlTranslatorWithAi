@@ -49,7 +49,7 @@ export class NovelView extends BaseElement {
   async #enterNovel() {
     this._meta = await projectManager.getNovelMeta(this._novelId);
     if (!this._meta) {
-      this.emit('back-to-dashboard');
+      this.emit('back-to-dashboard', { notFound: true, novelId: this._novelId });
       return;
     }
     const lang = i18n.current;

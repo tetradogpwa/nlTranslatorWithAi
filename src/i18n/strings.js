@@ -47,6 +47,11 @@ const STRINGS = {
       pendingBanner: (n) => `${n} novela(s) pendiente(s) de configurar — haz clic en su tarjeta para completar la ficha.`,
     },
     novel: {
+      // es-ES.novel
+      notFound: 'No se ha encontrado esa novela (puede que la carpeta se haya movido o eliminado). Volviendo a la lista…',
+      missingBadge: 'No encontrada',
+
+
       chapterTitle: (num, lang) => `Capítulo ${num} · ${lang}`,
       addLangTitle: 'Añadir idioma a esta serie',
       addLangBody: (lang) => `Esta serie aún no tiene "${lang}" como idioma disponible. ¿Quieres añadirlo ahora?`,
@@ -168,6 +173,9 @@ const STRINGS = {
       pendingBanner: (n) => `${n} novel·la(es) pendent(s) de configurar — fes clic a la targeta per completar la fitxa.`,
     },
     novel: {
+      // ca-ES.novel
+      notFound: 'No s\'ha trobat aquesta novel·la (potser la carpeta s\'ha mogut o eliminat). Tornant a la llista…',
+      missingBadge: 'No trobada',
       chapterTitle: (num, lang) => `Capítol ${num} · ${lang}`,
       addLangTitle: 'Afegeix idioma a aquesta sèrie',
       addLangBody: (lang) => `Aquesta sèrie encara no té "${lang}" com a idioma disponible. Vols afegir-lo ara?`,
